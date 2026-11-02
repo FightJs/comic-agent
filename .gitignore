@@ -1,0 +1,12 @@
+.venv/
+node_modules/
+dist/
+__pycache__/
+.pytest_cache/
+*.pyc
+data/
+output/
+.playwright-cli/
+.superpowers/
+.DS_Store
+*.tsbuildinfo
