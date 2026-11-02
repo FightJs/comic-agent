@@ -756,3 +756,4 @@
   white-space: normal;
 }
 .region-summary-item{width:100%;display:block;text-align:left;white-space:normal;border:0;border-bottom:1px solid var(--line);border-radius:0;background:transparent;padding:8px 0}.region-summary-item p{margin-bottom:0}.canvas-area:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
+.full-script-table td.field-panel{min-width:108px}.full-script-table td.field-panel button{font-size:12px;padding:5px 7px}

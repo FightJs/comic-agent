@@ -84,3 +84,12 @@ export const primaryRecord = (r: any) =>
 export function clearSubmittedMessage(current: string, submitted: string) {
   return current === submitted ? "" : current;
 }
+export function cancelAnnotationEdit<T extends { id: string }>(
+  items: T[],
+  id: string,
+  original: T | null,
+): T[] {
+  return original
+    ? items.map((a) => (a.id === id ? original : a))
+    : items.filter((a) => a.id !== id);
+}

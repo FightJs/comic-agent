@@ -25,7 +25,7 @@ import {
 import { api, json, recPath, type RecordItem } from "./api";
 import { ErrorNote } from "./ui";
 import { toImagePoint } from "./logic";
-import { wheelTransform } from "./workflowLogic";
+import { wheelTransform, cancelAnnotationEdit } from "./workflowLogic";
 export type Annotation = {
   id: string;
   type: string;
@@ -49,6 +49,7 @@ export function AnnotationCanvas({
   const [space, setSpace] = useState(false),
     [composer, setComposer] = useState(false);
   const noteInput = useRef<HTMLTextAreaElement>(null);
+  const composerOriginal = useRef<Annotation | null>(null);
   useEffect(() => {
     const down = (e: KeyboardEvent) => {
       if (
@@ -99,6 +100,9 @@ export function AnnotationCanvas({
   useEffect(() => {
     const id = focusAnnotation?.split(":")[0];
     if (id && latest.current.some((a) => a.id === id)) {
+      composerOriginal.current = structuredClone(
+        latest.current.find((a) => a.id === id)!,
+      );
       setSelected(id);
       setComposer(true);
     }
@@ -133,13 +137,13 @@ export function AnnotationCanvas({
     height: record.content.height,
   };
   useEffect(
-    () => () => {
+    () => {
       localStorage.setItem(
         viewportKey,
         JSON.stringify(currentViewport.current),
       );
     },
-    [viewportKey],
+    [viewportKey, scale, offset.x, offset.y],
   );
   const key = `comic-annotations:${record.id}:${record.version}`;
   const fit = () => {
@@ -216,7 +220,7 @@ export function AnnotationCanvas({
     undo.current.push(latest.current);
     redo.current = [];
     setItems(next);
-    setStatus("未保存");
+    setStatus(JSON.stringify(next)===saved.current?"已保存":"未保存");
   };
   const save = async () => {
     if (
@@ -255,7 +259,8 @@ export function AnnotationCanvas({
     }
   };
   useEffect(() => {
-    if (!ready || JSON.stringify(items) === saved.current) return;
+    if (!ready) return;
+    if (JSON.stringify(items) === saved.current) {setStatus("已保存");localStorage.removeItem(key);return;}
     localStorage.setItem(
       key,
       JSON.stringify({ version: version.current, items }),
@@ -317,6 +322,7 @@ export function AnnotationCanvas({
       delete a.width;
       delete a.height;
     }
+    composerOriginal.current = null;
     setComposer(false);
     drawing.current = a;
     setSelected(a.id);
@@ -505,6 +511,7 @@ export function AnnotationCanvas({
                 strokeWidth: 2 / scale,
                 onClick: () => {
                   if (tool === "select") {
+                    composerOriginal.current = structuredClone(a);
                     setSelected(a.id);
                     setComposer(true);
                   }
@@ -570,7 +577,13 @@ export function AnnotationCanvas({
           <div className="actions">
             <button
               onClick={() => {
-                commit(items.filter((a) => a.id !== chosen.id));
+                commit(
+                  cancelAnnotationEdit(
+                    items,
+                    chosen.id,
+                    composerOriginal.current,
+                  ),
+                );
                 setComposer(false);
               }}
             >

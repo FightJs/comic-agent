@@ -412,6 +412,7 @@ export function Conversation({
     .map((r) => r.id + ":" + r.version)
     .sort()
     .join(",");
+  const [historyChats, setHistoryChats] = useState<RecordItem[]>([]);
   const [chat, setChat] = useState<RecordItem | null>(null),
     [error, setError] = useState(""),
     [busy, setBusy] = useState(false),
@@ -469,17 +470,26 @@ export function Conversation({
   }, [key, annotationRevision, annotationsReady, annotationRefresh]);
   const token = useRef(crypto.randomUUID());
   const load = () =>
-    api<RecordItem[]>(base(pid) + "/conversations").then((rows) =>
-      setChat(
-        rows.find(
-          (r) =>
-            r.content.refs
-              .map((v: any) => v.id + ":" + v.version)
-              .sort()
-              .join(",") === key,
-        ) || null,
-      ),
-    );
+    api<RecordItem[]>(base(pid) + "/conversations").then((rows) => {
+      const ids = refs
+        .map((r) => r.id)
+        .sort()
+        .join(",");
+      const matching = rows.filter(
+        (r) =>
+          r.content.refs
+            .map((v: any) => v.id)
+            .sort()
+            .join(",") === ids,
+      );
+      const same = (r: RecordItem) =>
+        r.content.refs
+          .map((v: any) => v.id + ":" + v.version)
+          .sort()
+          .join(",") === key;
+      setChat(matching.find(same) || null);
+      setHistoryChats(matching.filter((r) => !same(r)));
+    });
   useEffect(() => {
     load().catch((e) => setError(e.message));
   }, [key]);
@@ -514,6 +524,30 @@ export function Conversation({
         >
           查看本组修改结果 · 连续比较
         </button>
+      )}
+      {historyChats.length > 0 && (
+        <details className="history-discussions">
+          <summary>查看历史底稿讨论 · {historyChats.length} 组</summary>
+          {historyChats.map((r) => (
+            <details key={r.id}>
+              <summary>
+                {r.content.refs
+                  .map((v: any) => {
+                    const item = refs.find((x) => x.id === v.id);
+                    return `${item?.content.episode}话${item?.content.panel}格 v${v.version}`;
+                  })
+                  .join(" / ")}
+              </summary>
+              <p className="muted">历史讨论只读，不会加入当前生成方案。</p>
+              {r.content.messages.map((m: any) => (
+                <article className={"message " + m.role} key={m.id}>
+                  <strong>{m.role === "user" ? "你" : "模拟助手"}</strong>
+                  <p>{m.text}</p>
+                </article>
+              ))}
+            </details>
+          ))}
+        </details>
       )}
       <div className="chat-messages">
         {!chat && (

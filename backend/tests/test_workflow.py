@@ -99,3 +99,13 @@ def test_concurrent_first_packages_do_not_duplicate_primary(tmp_path):
     primary=[r for r in c.get(b+'/records?kind=package').json() if not r['content'].get('candidate_for')]
     assert len(primary)==1
     assert all(r.status_code in (200,409) for r in results)
+
+
+def test_selected_review_is_atomic_across_episode_groups(tmp_path):
+    c,b,add=setup(tmp_path);a=add('script',{'episode':10,'panel':1});z=add('script',{'episode':11,'panel':1})
+    refs=[{'id':a['id'],'version':1},{'id':z['id'],'version':99}]
+    assert c.post(b+'/production-review',json={'refs':refs,'decision':'approved','note':'通过'}).status_code==409
+    assert c.get(b+'/records/'+a['id']).json()['review']=='pending'
+    refs[1]['version']=1
+    assert c.post(b+'/production-review',json={'refs':refs,'decision':'approved','note':'通过'}).status_code==200
+    assert c.get(b+'/records/'+a['id']).json()['review']=='approved'

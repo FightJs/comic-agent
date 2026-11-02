@@ -528,15 +528,17 @@ export function Scripts(
               disabled={busy}
               onClick={() =>
                 void action(async () => {
-                  for (const r of picked)
-                    await api(
-                      recPath(r) + "/reviews",
-                      json("POST", {
+                  await api(
+                    base(pid) + "/production-review",
+                    json("POST", {
+                      refs: picked.map((r) => ({
+                        id: r.id,
                         version: r.version,
-                        decision: "approved",
-                        note: "逐格审核通过",
-                      }),
-                    );
+                      })),
+                      decision: "approved",
+                      note: "逐格审核通过",
+                    }),
+                  );
                   setNotice("选中版本已记录审核；模拟内容不能正式放行");
                 })
               }
@@ -775,7 +777,8 @@ function ScriptRows({
           <td key={k} className={"field-" + k}>
             {k === "panel" ? (
               <button onClick={open}>
-                {String(r.content.panel).padStart(2, "0")}
+                {r.content.episode}话 /{" "}
+                {String(r.content.panel).padStart(2, "0")}格
               </button>
             ) : (
               r.content[k] || "—"

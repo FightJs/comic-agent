@@ -42,3 +42,10 @@ it("late discussion completion clears only the submitted message, preserving new
   );
   expect(clearSubmittedMessage("已发送的意见", "已发送的意见")).toBe("");
 });
+it("canceling an existing annotation preserves it while canceling a new one removes it", async () => {
+  const { cancelAnnotationEdit } = await import("./workflowLogic");
+  const original = { id: "a", note: "原意见", x: 12 },
+    edited = { ...original, note: "新意见" };
+  expect(cancelAnnotationEdit([edited], "a", original)).toEqual([original]);
+  expect(cancelAnnotationEdit([edited], "a", null)).toEqual([]);
+});

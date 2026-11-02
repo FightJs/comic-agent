@@ -23,6 +23,11 @@ class ChatIn(BaseModel):
     refs: list[Ref] = Field(min_length=1,max_length=100)
     message: str = Field(min_length=1,max_length=20000)
     expected_version: int = Field(ge=0)
+class SelectedReviewIn(BaseModel):
+    refs: list[Ref] = Field(min_length=1,max_length=1000)
+    decision: Literal['approved','changes']
+    note: str = Field(default='',max_length=10000)
+
 class JobIn(BaseModel):
     operation: Literal['range','rewrite','package','image','repair']
     refs: list[Ref] = Field(default_factory=list,max_length=300)
@@ -200,6 +205,20 @@ def register_workflow(app, store):
             db.execute('INSERT INTO workflow_submissions VALUES(?,?,?)',(pid,body.submission_id,dump(result)))
         for tid in ids: background.add_task(run,tid)
         return result
+
+    @app.post('/api/projects/{pid}/production-review')
+    def review_selected(pid:str,body:SelectedReviewIn):
+        with store.db() as db:
+            db.execute('BEGIN IMMEDIATE')
+            snapshots=[]
+            for ref in body.refs:
+                r=store.get(db,pid,ref.id)
+                if r['version']!=ref.version: raise HTTPException(409,'所选脚本已有新版本，本次审核未写入，请重新核对')
+                if r['kind']!='script' or r['content'].get('candidate_for'): raise HTTPException(422,'请选择当前脚本，候选请先采用')
+                snapshots.append(r)
+            for r in snapshots:
+                db.execute('INSERT INTO reviews VALUES(?,?,?,?,?,?,?)',(uid(),r['id'],r['version'],body.decision,body.note,r['source'],now()))
+            return {'reviewed':len(snapshots)}
 
     @app.post('/api/projects/{pid}/candidates/{rid}/adopt')
     def adopt_candidate(pid:str,rid:str):

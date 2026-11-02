@@ -37,5 +37,5 @@ Interfaces: conversations keyed by selected image/version refs, production-jobs 
 
 ### Task 4: verification and independent review
 - [x] Seed isolated representative data, use real browser to verify workflows and failures at1440/1280.
-- [ ] Independent reviewer tests primary paths; fix material findings.
-- [ ] Update docs with actual coverage and limitations, preserve local data, commit.
+- [x] Independent reviewer tests primary paths; fix material findings.
+- [x] Update docs with actual coverage and limitations, preserve local data, commit.
