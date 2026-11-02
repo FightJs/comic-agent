@@ -20,7 +20,6 @@ import {
   Clapperboard,
   Package,
   Images as ImagesIcon,
-  ScanLine,
   MoreHorizontal,
   RotateCcw,
 } from "lucide-react";
@@ -45,10 +44,9 @@ const prep = [
   ["asset", "全面资产与确认", Boxes, "整理全书人物、场景和道具状态"],
 ] as const;
 const production = [
-  ["script", "逐格脚本", Clapperboard, "把每一话拆解为可执行的画面"],
+  ["script", "脚本审核", Clapperboard, "从细纲生成成品脚本，连续审阅并修改选中格"],
   ["package", "逐格生图包", Package, "对照脚本、镜头、参考与直接提示词"],
-  ["images", "生成与审图", ImagesIcon, "查看图片、版本和逐图问题"],
-  ["modify", "人工修改", ScanLine, "标记局部目标，调整整体画面"],
+  ["images", "图片工作区", ImagesIcon, "在画面上批注，与 AI 讨论后生成修改候选"],
 ] as const;
 
 export default function App() {
@@ -93,7 +91,7 @@ export default function App() {
     const [rows, g, t] = await Promise.all([
       api<RecordItem[]>(base(pid) + "/records"),
       api(base(pid) + "/gates?batch=" + batch),
-      api<any[]>(base(pid) + "/tasks"),
+      api<any[]>(base(pid) + "/tasks?compact=true"),
     ]);
     if (activePid.current !== target || activeBatch.current!==batch) return;
     setConnected(true);
@@ -112,7 +110,7 @@ export default function App() {
     let previous = "";
     const t = setInterval(async () => {
       try {
-        const tasks = await api<any[]>(base(pid) + "/tasks");
+        const tasks = await api<any[]>(base(pid) + "/tasks?compact=true");
         if (activePid.current !== pid) return;
         setConnected(true);
         const signature = tasks.map((t) => t.id + ":" + t.status).join("|");
@@ -161,7 +159,7 @@ export default function App() {
             r.content.panel === (extra.panel || Math.max(1, panel)),
         );
       await api(
-        base(pid) + "/tasks",
+        base(pid) + "/tasks?compact=true",
         json("POST", {
           kind,
           ...(target
@@ -229,7 +227,7 @@ export default function App() {
       );
       if (saved) {
         setFlow(saved.flow);
-        setStage(saved.stage);
+        setStage(saved.stage === "modify" ? "images" : saved.stage);
         setBatch(saved.batch);
         setEpisode(saved.episode);
         setPanel(saved.panel);
@@ -420,7 +418,7 @@ export default function App() {
             </div>
             <div>
               <Clapperboard size={19} />
-              <strong>每 10 话制作</strong>
+              <strong>批次制作</strong>
               <p>逐格脚本 → 生图包 → 审图与修改</p>
             </div>
             <div>
@@ -437,7 +435,7 @@ export default function App() {
       </div>
     );
   return (
-    <div className="app">
+    <div className={"app" + (flow === "production" ? " production-app" : "") + (stage === "images" ? " image-mode" : "")}>
       <aside className="sidebar">
         <button
           className="brand"
@@ -668,7 +666,7 @@ export default function App() {
               )}{" "}
               {(stage === "script" || stage === "package") && (
                 <Scripts
-                  key={`${stage}-${batch}-${episode}`}
+                  key={`${stage}-${batch}`}
                   {...productionProps}
                   kind={stage}
                 />

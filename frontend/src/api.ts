@@ -35,7 +35,7 @@ export async function api<T = any>(
       options.body instanceof FormData
         ? options.headers
         : { "Content-Type": "application/json", ...options.headers },
-  });
+  }).catch(() => { throw new Error("无法连接本地服务，请检查服务后重试。当前输入已保留。"); });
   if (!response.ok) {
     const data = await response.json().catch(() => ({ detail: "服务不可用" }));
     throw new ApiError(

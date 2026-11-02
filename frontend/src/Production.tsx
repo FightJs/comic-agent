@@ -1,11 +1,23 @@
-import { useViewState } from "./useViewState";
-import { useEffect, useState } from "react";
-import { Plus, Sparkles, History, Search, ImagePlus } from "lucide-react";
-import { api, base, json, type RecordItem } from "./api";
-import { Badge, Empty, ErrorNote, reviewLabel, Drawer } from "./ui";
+import { useEffect, useState, useRef } from "react";
+import { api, base, json, recPath, RecordItem } from "./api";
+import { Badge, Drawer, Empty, ErrorNote, reviewLabel } from "./ui";
 import { RecordHistory } from "./DocumentEditor";
 import { useDraft } from "./useDraft";
+import { useViewState } from "./useViewState";
 import type { WorkspaceProps } from "./Preparation";
+import {
+  CandidateReview,
+  Conversation,
+  RangeGeneration,
+  submitJob,
+} from "./Workflow";
+import {
+  composePrompt,
+  primaryRecord,
+  promptFields,
+  scriptFields,
+} from "./workflowLogic";
+import "./production.css";
 export type ProductionProps = WorkspaceProps & {
   batch: number;
   episode: number;
@@ -13,576 +25,773 @@ export type ProductionProps = WorkspaceProps & {
   onPanel: (p: number) => void;
   onLocation: (episode: number, panel: number) => void;
 };
-const fields = [
-  ["characters", "角色"],
-  ["scene", "场景"],
-  ["weather", "天气"],
-  ["time", "时间"],
-  ["shot", "景别"],
-  ["camera", "机位"],
-  ["description", "画面内容"],
-  ["dialogue", "台词"],
-  ["sfx", "特效字"],
-  ["note", "备注"],
-];
-function PanelForm({
+function ScriptDetail({
   record,
   onSaved,
-  assets,
+  onClose,
 }: {
   record: RecordItem;
   onSaved: (r: RecordItem) => void;
-  assets: RecordItem[];
+  onClose: () => void;
 }) {
-  const draft = useDraft(record, onSaved),
-    [history, setHistory] = useState(false),
-    [assetId, setAssetId] = useState("");
-  const isPackage = record.kind === "package";
-  const [boundReferences, setBoundReferences] = useState<RecordItem[]>([]),
-    [boundScript, setBoundScript] = useState<RecordItem | null>(null),
-    [referenceError, setReferenceError] = useState("");
-  const referenceKey = JSON.stringify(draft.content.references || []);
-  useEffect(() => {
-    let alive = true;
-    Promise.all(
-      (draft.content.references || []).map((ref: any) =>
-        api<RecordItem>(
-          base(record.project_id) + `/records/${ref.id}?version=${ref.version}`,
-        ),
-      ),
-    )
-      .then((rows) => {
-        if (alive) setBoundReferences(rows);
-      })
-      .catch((e) => setReferenceError(e.message));
-    return () => {
-      alive = false;
-    };
-  }, [referenceKey]);
-  useEffect(() => {
-    if (!draft.content.script_id) return;
-    api<RecordItem>(
-      base(record.project_id) +
-        `/records/${draft.content.script_id}?version=${draft.content.script_version}`,
-    )
-      .then(setBoundScript)
-      .catch((e) => setReferenceError(e.message));
-  }, [draft.content.script_id, draft.content.script_version]);
-
-  const addRef = () => {
-    const a = assets.find((x) => x.id === assetId);
-    if (!a) return;
-    draft.setContent({
-      ...draft.content,
-      references: [
-        ...(draft.content.references || []),
-        { id: a.id, version: a.version, purpose: "身份参考" },
-      ],
-    });
-    setAssetId("");
-  };
+  const d = useDraft(record, onSaved);
+  const [edit, setEdit] = useState(false),
+    [history, setHistory] = useState(false);
   return (
-    <div className="panel-form">
-      <div className="detail-heading">
-        <div>
-          <span className="muted">
-            第 {record.content.episode} 话 / 第 {record.content.panel} 格
-          </span>
-          <h3>{isPackage ? "逐格生图包" : "画面与叙事"}</h3>
-        </div>
+    <Drawer
+      title={`第${record.content.episode}话 · 第${record.content.panel}格`}
+      onClose={onClose}
+    >
+      <div className="actions">
         <Badge source={record.source} />
+        <span>
+          v{record.version} · {reviewLabel(record.review)}
+        </span>
+        <button onClick={() => setEdit(!edit)}>
+          {edit ? "返回阅读" : "手动修订"}
+        </button>
+        <button onClick={() => setHistory(true)}>版本与审核</button>
       </div>
-      <ErrorNote message={draft.error} />
-      {draft.error && (
-        <button onClick={() => void draft.resolve()}>
+      <ErrorNote message={d.error} />
+      {d.error && (
+        <button onClick={() => void d.resolve()}>
           保留编辑并读取最新版本号
         </button>
       )}
-      <ErrorNote message={referenceError} />
-      {isPackage && (
-        <details className="bound-script">
-          <summary>
-            绑定脚本 · {boundScript ? `v${boundScript.version}` : "尚未绑定"}
-          </summary>
-          {boundScript ? (
-            <>
-              <Badge source={boundScript.source} />
-              <p>{boundScript.content.description || "未填写画面内容"}</p>
-              <p>台词：{boundScript.content.dialogue || "无"}</p>
-              <small>
-                角色：{boundScript.content.characters || "未填写"} · 场景：
-                {boundScript.content.scene || "未填写"}
-              </small>
-            </>
+      {scriptFields.slice(1).map(([k, label]) => (
+        <section className="script-reading-field" key={k}>
+          <strong>{label}</strong>
+          {edit ? (
+            <textarea
+              value={d.content[k] || ""}
+              onChange={(e) =>
+                d.setContent({ ...d.content, [k]: e.target.value })
+              }
+            />
           ) : (
-            <p>请先在本话格建立逐格脚本，再创建生图包。</p>
+            <p>{d.content[k] || "—"}</p>
           )}
-        </details>
-      )}
-      <div className="form-grid">
-        {(isPackage
-          ? [
-              ["camera", "镜头与画面要求"],
-              ["prompt", "完整直接提示词"],
-              ["parameters", "执行参数"],
-              ["dependencies", "前图依赖"],
-              ["missing", "缺件与检查目标"],
-            ]
-          : fields
-        ).map(([key, label]) => (
-          <label
-            key={key}
-            className={
-              [
-                "description",
-                "dialogue",
-                "note",
-                "prompt",
-                "missing",
-                "dependencies",
-              ].includes(key)
-                ? "full"
-                : ""
-            }
-          >
-            {label}
-            {[
-              "description",
-              "dialogue",
-              "note",
-              "prompt",
-              "missing",
-              "dependencies",
-            ].includes(key) ? (
-              <textarea
-                rows={key === "prompt" ? 7 : 3}
-                value={draft.content[key] || ""}
-                onChange={(e) =>
-                  draft.setContent({ ...draft.content, [key]: e.target.value })
-                }
-              />
-            ) : (
-              <input
-                value={draft.content[key] || ""}
-                onChange={(e) =>
-                  draft.setContent({ ...draft.content, [key]: e.target.value })
-                }
-              />
-            )}
-          </label>
-        ))}
-      </div>
-      {isPackage && (
-        <>
-          <h4>实际参考与用途</h4>
-          <div className="reference-list">
-            {(draft.content.references || []).map((ref: any, i: number) => {
-              const a = boundReferences.find(
-                (x) => x.id === ref.id && x.version === ref.version,
-              );
-              return (
-                <div key={i}>
-                  {a?.content.url && (
-                    <img
-                      src={a.content.url}
-                      alt={`${a.title} 版本 ${ref.version}`}
-                    />
-                  )}
-                  <div>
-                    <strong>{a?.title || "历史参考"}</strong>
-                    <small>v{ref.version}</small>
-                    <input
-                      aria-label="参考用途"
-                      value={ref.purpose}
-                      onChange={(e) =>
-                        draft.setContent({
-                          ...draft.content,
-                          references: draft.content.references.map(
-                            (r: any, n: number) =>
-                              n === i ? { ...r, purpose: e.target.value } : r,
-                          ),
-                        })
-                      }
-                    />
-                  </div>
-                  <button
-                    onClick={() =>
-                      draft.setContent({
-                        ...draft.content,
-                        references: draft.content.references.filter(
-                          (_: any, n: number) => n !== i,
-                        ),
-                      })
-                    }
-                  >
-                    移除
-                  </button>
-                </div>
-              );
-            })}
-          </div>
-          <div className="actions">
-            <select
-              aria-label="选择参考资产"
-              value={assetId}
-              onChange={(e) => setAssetId(e.target.value)}
-            >
-              <option value="">选择本项目资产</option>
-              {assets.map((a) => (
-                <option key={a.id} value={a.id}>
-                  {a.title} · v{a.version}
-                </option>
-              ))}
-            </select>
-            <button onClick={addRef} disabled={!assetId}>
-              <ImagePlus size={16} />
-              添加参考
-            </button>
-          </div>
-          <p className="muted">
-            引用绑定资产版本；引用模拟资产后，本包也保留模拟来源。
-          </p>
-        </>
-      )}
-      <div className="sticky-actions">
-        <span className="save-state">{draft.status}</span>
-        <button onClick={() => setHistory(true)}>
-          <History size={16} />
-          版本与审核
-        </button>
-        <button className="primary" onClick={() => draft.retry()}>
-          保存本格
-        </button>
-      </div>
+        </section>
+      ))}
+      {edit && <button onClick={() => void d.save()}>保存修订</button>}
       {history && (
         <RecordHistory
-          record={draft.head.current}
+          record={record}
           onSaved={onSaved}
           onClose={() => setHistory(false)}
         />
       )}
-    </div>
+    </Drawer>
+  );
+}
+function PackageDetail({
+  record,
+  ...props
+}: ProductionProps & { record: RecordItem }) {
+  const d = useDraft(record, props.onSaved);
+  const [refs, setRefs] = useState<RecordItem[]>([]),
+    [error, setError] = useState(""),
+    [tab, setTab] = useState("package"),
+    [asset, setAsset] = useState("");
+  const bound = props.records.find((r) => r.id === d.content.script_id);
+  const stale = bound && bound.version !== d.content.script_version;
+  useEffect(() => {
+    let alive = true;
+    Promise.all(
+      (d.content.references || []).map((r: any) =>
+        api<RecordItem>(
+          base(props.pid) + `/records/${r.id}?version=${r.version}`,
+        ),
+      ),
+    )
+      .then((rows) => {
+        if (alive) setRefs(rows);
+      })
+      .catch((e) => setError(e.message));
+    return () => {
+      alive = false;
+    };
+  }, [JSON.stringify(d.content.references)]);
+  const setPart = (key: string, value: string) =>
+    d.setContent((c) => {
+      const next = { ...c, [key]: value };
+      if (c.prompt_mode !== "override" && !(c.prompt && !c.prompt_mode))
+        next.prompt = composePrompt(next);
+      else next.prompt_mode = "override";
+      return next;
+    });
+  return (
+    <article className="package-reader">
+      <header className="detail-heading">
+        <div>
+          <small>
+            第{record.content.episode}话 / 第{record.content.panel}格
+          </small>
+          <h2>逐格生图包</h2>
+        </div>
+        <Badge source={record.source} />
+      </header>
+      <div className="segmented">
+        <button
+          className={tab === "package" ? "active" : ""}
+          onClick={() => setTab("package")}
+        >
+          内容与资产
+        </button>
+        <button
+          className={tab === "chat" ? "active" : ""}
+          onClick={() => setTab("chat")}
+        >
+          与 AI 讨论修改
+        </button>
+      </div>
+      <ErrorNote message={d.error || error} />
+      {d.error && (
+        <button onClick={() => void d.resolve()}>
+          保留编辑并读取最新版本号
+        </button>
+      )}
+      {stale && (
+        <div className="notice">
+          绑定脚本 v{d.content.script_version}，当前已为 v{bound.version}
+          。本包依据已过期，旧内容仍保留。
+        </div>
+      )}
+      {tab === "chat" ? (
+        <Conversation
+          key={record.id + ":" + record.version}
+          pid={props.pid}
+          refs={[record]}
+          operation="rewrite"
+          refresh={props.refresh}
+        />
+      ) : (
+        <>
+          <details>
+            <summary>
+              脚本依据 · v{d.content.script_version || "未绑定"}
+            </summary>
+            <BoundScript
+              pid={props.pid}
+              id={d.content.script_id}
+              version={d.content.script_version}
+            />
+          </details>
+          {["人物", "场景", "其他"].map((category) => (
+            <section key={category}>
+              <h3>{category === "其他" ? "其他参考" : category + "资产"}</h3>
+              <div className="asset-strip">
+                {refs
+                  .filter((r) =>
+                    category === "其他"
+                      ? !["人物", "场景"].includes(r.content.category)
+                      : r.content.category === category,
+                  )
+                  .map((r) => (
+                    <figure key={r.id}>
+                      <img src={r.content.url} alt={r.title} />
+                      <figcaption>
+                        <strong>{r.title}</strong>
+                        <span>
+                          v{r.version} · {r.content.state || "默认状态"}
+                        </span>
+                        <input
+                          aria-label={r.title + "参考用途"}
+                          value={
+                            (d.content.references || []).find(
+                              (x: any) => x.id === r.id,
+                            )?.purpose || ""
+                          }
+                          onChange={(e) =>
+                            d.setContent({
+                              ...d.content,
+                              references: d.content.references.map((x: any) =>
+                                x.id === r.id
+                                  ? { ...x, purpose: e.target.value }
+                                  : x,
+                              ),
+                            })
+                          }
+                        />
+                        <button
+                          onClick={() =>
+                            d.setContent({
+                              ...d.content,
+                              references: d.content.references.filter(
+                                (x: any) => x.id !== r.id,
+                              ),
+                            })
+                          }
+                        >
+                          移除参考
+                        </button>
+                      </figcaption>
+                    </figure>
+                  ))}
+                {!refs.some((r) =>
+                  category === "其他"
+                    ? !["人物", "场景"].includes(r.content.category)
+                    : r.content.category === category,
+                ) && <p className="muted">尚未绑定{category}参考</p>}
+              </div>
+            </section>
+          ))}
+          <div className="actions">
+            <select
+              aria-label="添加资产"
+              value={asset}
+              onChange={(e) => setAsset(e.target.value)}
+            >
+              <option value="">选择资产或画风</option>
+              {props.records
+                .filter(
+                  (r) =>
+                    ["asset", "style"].includes(r.kind) && primaryRecord(r),
+                )
+                .map((r) => (
+                  <option key={r.id} value={r.id}>
+                    {r.title} · v{r.adopted}
+                  </option>
+                ))}
+            </select>
+            <button
+              disabled={!asset}
+              onClick={() => {
+                const r = props.records.find((r) => r.id === asset)!;
+                if (
+                  !(d.content.references || []).some((x: any) => x.id === asset)
+                )
+                  d.setContent({
+                    ...d.content,
+                    references: [
+                      ...(d.content.references || []),
+                      {
+                        id: r.id,
+                        version: r.adopted,
+                        purpose: r.content.category || "画风",
+                      },
+                    ],
+                  });
+                setAsset("");
+              }}
+            >
+              绑定采用版本
+            </button>
+          </div>
+          <h3>直接提示词拆分</h3>
+          {promptFields.map(([k, label]) => (
+            <label className="prompt-section" key={k}>
+              {label}
+              <textarea
+                rows={k === "content_prompt" ? 5 : 3}
+                value={d.content[k] || ""}
+                onChange={(e) => setPart(k, e.target.value)}
+                placeholder={
+                  record.content.prompt && !record.content.prompt_mode
+                    ? "旧包未拆分，请人工填写或重新生成生图包"
+                    : "尚未填写"
+                }
+              />
+            </label>
+          ))}
+          <div className="detail-heading">
+            <h3>最终发送的完整提示词</h3>
+            <span>
+              {d.content.prompt_mode === "override"
+                ? "手动覆盖"
+                : !d.content.prompt_mode && d.content.prompt
+                  ? "旧包完整文本 · 未拆分"
+                  : "由分段组合"}
+            </span>
+          </div>
+          {d.content.prompt_mode === "override" && (
+            <div className="notice">
+              当前使用手工完整文本；修改分段不会覆盖它。
+              <button
+                onClick={() =>
+                  d.setContent({
+                    ...d.content,
+                    prompt: composePrompt(d.content),
+                    prompt_mode: "composed",
+                  })
+                }
+              >
+                重新按分段组合
+              </button>
+            </div>
+          )}
+          <textarea
+            aria-label="最终完整提示词"
+            className="final-prompt"
+            rows={9}
+            value={d.content.prompt || ""}
+            onChange={(e) =>
+              d.setContent({
+                ...d.content,
+                prompt: e.target.value,
+                prompt_mode: "override",
+              })
+            }
+          />
+          <details>
+            <summary>执行参数、依赖与检查要求</summary>
+            {[
+              ["parameters", "执行参数"],
+              ["dependencies", "前图依赖"],
+              ["missing", "缺件与检查目标"],
+            ].map(([k, label]) => (
+              <label key={k}>
+                <span>{label}</span>
+                <textarea
+                  aria-label={label}
+                  placeholder={label}
+                  value={d.content[k] || ""}
+                  onChange={(e) =>
+                    d.setContent({ ...d.content, [k]: e.target.value })
+                  }
+                />
+              </label>
+            ))}
+          </details>
+          <div className="actions">
+            <button onClick={() => void d.save()}>保存生图包</button>
+            <span className="muted">
+              {d.dirty ? "有未保存修改" : "当前内容已保存"} · v{record.version}
+            </span>
+          </div>
+        </>
+      )}
+    </article>
+  );
+}
+function BoundScript({
+  pid,
+  id,
+  version,
+}: {
+  pid: string;
+  id?: string;
+  version?: number;
+}) {
+  const [r, setR] = useState<RecordItem | null>(null),
+    [error, setError] = useState("");
+  useEffect(() => {
+    if (id)
+      api<RecordItem>(base(pid) + `/records/${id}?version=${version}`)
+        .then(setR)
+        .catch((e) => setError(e.message));
+  }, [id, version]);
+  return (
+    <>
+      <ErrorNote message={error} />
+      <p className="read-copy">{r?.content.description || "尚未绑定脚本"}</p>
+      <p>{r?.content.dialogue}</p>
+    </>
   );
 }
 export function Scripts(
   props: ProductionProps & { kind: "script" | "package" },
 ) {
-  const [query, setQuery] = useViewState(
-      props.pid +
-        ":" +
-        props.batch +
-        ":" +
-        props.episode +
-        ":" +
-        props.kind +
-        ":query",
-      "",
-    ),
+  const { records, pid, kind, batch, episode, panel } = props;
+  const [query, setQuery] = useViewState(`${pid}:${kind}:query`, ""),
+    [scope, setScope] = useViewState(`${pid}:${kind}:scope`, "episode"),
+    [selected, setSelected] = useState<string[]>([]),
+    [range, setRange] = useState(false),
+    [detail, setDetail] = useState<RecordItem | null>(null),
+    [discuss, setDiscuss] = useState(false),
+    [compare, setCompare] = useState<RecordItem | null>(null),
     [error, setError] = useState(""),
-    [sort, setSort] = useViewState(
-      props.pid + ":" + props.batch + ":" + props.kind + ":sort",
-      false,
-    );
-  const [batchReview, setBatchReview] = useState(false),
-    [reviewNote, setReviewNote] = useState(""),
-    [batchHistory, setBatchHistory] = useState<any[]>([]);
+    [notice, setNotice] = useState(""),
+    [busy, setBusy] = useState(false);
+  const tableRef = useRef<HTMLDivElement>(null);
+  const scrollKey = `comic-script-scroll:${pid}:${kind}`;
   useEffect(() => {
-    if (batchReview)
-      api<any[]>(base(props.pid) + "/batch-reviews?batch=" + props.batch)
-        .then(setBatchHistory)
-        .catch((e) => setError(e.message));
-  }, [batchReview]);
-  const batchScripts = props.records.filter(
-    (r) =>
-      r.kind === "script" &&
-      r.content.batch === props.batch &&
-      !r.content.pending_for,
-  );
-  const reviewBatch = async (decision: string) => {
+    let value;
     try {
-      await api(
-        base(props.pid) + "/batch-review",
-        json("POST", {
-          batch: props.batch,
-          records: batchScripts.map((r) => ({ id: r.id, version: r.version })),
-          decision,
-          note: reviewNote,
-        }),
-      );
-      await props.refresh();
-      setBatchReview(false);
-      setReviewNote("");
-    } catch (e) {
-      setError((e as Error).message);
+      value = JSON.parse(localStorage.getItem(scrollKey) || "null");
+    } catch {
+      return;
     }
-  };
-  const [selectedId, setSelectedId] = useViewState(
-    props.pid +
-      ":" +
-      props.batch +
-      ":" +
-      props.episode +
-      ":" +
-      props.kind +
-      ":selected",
-    "",
-  );
-  const all = props.records.filter(
-    (r) =>
-      r.kind === props.kind &&
-      r.content.batch === props.batch &&
-      r.content.episode === props.episode,
-  );
+    if (tableRef.current && value) {
+      tableRef.current.scrollTop = value.top;
+      tableRef.current.scrollLeft = value.left;
+    }
+  }, []);
+  const all = records.filter((r) => r.kind === kind && primaryRecord(r));
   const rows = all
-    .filter((r) => !query || Object.values(r.content).join(" ").includes(query))
-    .sort((a, b) =>
-      sort
-        ? b.content.panel - a.content.panel
-        : a.content.panel - b.content.panel,
+    .filter(
+      (r) =>
+        (scope === "all" || scope === "batch"
+          ? scope === "all" || r.content.batch === batch
+          : r.content.episode === episode) &&
+        (!query ||
+          Object.values(r.content).join(" ").includes(query) ||
+          String(r.content.panel) === query),
+    )
+    .sort(
+      (a, b) =>
+        a.content.episode - b.content.episode ||
+        a.content.panel - b.content.panel,
     );
-  const record =
-    all.find((r) => r.id === selectedId && r.content.panel === props.panel) ||
-    all.find(
-      (r) => r.content.panel === props.panel && !r.content.pending_for,
-    ) ||
-    all.find((r) => r.content.panel === props.panel);
-  const create = async () => {
+  const current =
+    rows.find(
+      (r) => r.content.episode === episode && r.content.panel === panel,
+    ) || rows[0];
+  useEffect(() => {
+    if (
+      kind === "package" &&
+      current &&
+      (current.content.episode !== episode || current.content.panel !== panel)
+    )
+      props.onLocation(current.content.episode, current.content.panel);
+  }, [kind, current?.id, episode, panel]);
+  const picked = all.filter((r) => selected.includes(r.id));
+  const candidates = (r: RecordItem) =>
+    records.filter(
+      (x) => x.content.candidate_for === r.id && !x.content.adopted_into,
+    );
+  const toggle = (id: string) =>
+    setSelected((s) =>
+      s.includes(id) ? s.filter((x) => x !== id) : [...s, id],
+    );
+  const action = async (fn: () => Promise<any>) => {
     try {
-      const panel =
-        props.kind === "package"
-          ? props.panel
-          : Math.max(0, ...all.map((r) => r.content.panel)) + 1;
-      const script = props.records.find(
-        (r) =>
-          r.kind === "script" &&
-          r.content.episode === props.episode &&
-          r.content.panel === panel &&
-          r.content.batch === props.batch,
-      );
-      const r = await api<RecordItem>(
-        base(props.pid) + "/records",
-        json("POST", {
-          kind: props.kind,
-          title: `第${props.episode}话 第${panel}格`,
-          source: script?.source === "mock" ? "mock" : "manual",
-          content: {
-            batch: props.batch,
-            episode: props.episode,
-            panel,
-            ...(props.kind === "package"
-              ? {
-                  script_id: script?.id,
-                  script_version: script?.version,
-                  references: [],
-                  prompt: "",
-                  missing: "待补充脚本和参考依据",
-                }
-              : { description: "", characters: "", scene: "" }),
-          },
-        }),
-      );
-      props.onSaved(r);
-      setSelectedId(r.id);
-      props.onPanel(panel);
+      setBusy(true);
+      setError("");
+      await fn();
+      await props.refresh();
     } catch (e) {
       setError((e as Error).message);
+    } finally {
+      setBusy(false);
     }
   };
   return (
-    <>
-      <div className="section-tools">
-        <div className="search small">
-          <Search size={15} />
+    <div className="production-review">
+      <div className="review-toolbar">
+        <div className="actions">
+          <select
+            aria-label="脚本显示范围"
+            value={scope}
+            onChange={(e) => {
+              setScope(e.target.value);
+              setSelected([]);
+            }}
+          >
+            <option value="episode">当前话</option>
+            <option value="batch">当前10话</option>
+            <option value="all">全项目</option>
+          </select>
           <input
-            aria-label="筛选话格"
+            aria-label="查找话格内容"
+            placeholder="查找角色、场景、格号或内容"
             value={query}
-            placeholder="筛选角色、场景、内容"
             onChange={(e) => setQuery(e.target.value)}
           />
         </div>
         <div className="actions">
-          {props.kind === "script" && (
+          {kind === "script" ? (
+            <button className="primary" onClick={() => setRange(true)}>
+              从细纲选择话范围生成
+            </button>
+          ) : (
             <button
-              disabled={!batchScripts.length}
-              onClick={() => setBatchReview(true)}
+              disabled={busy}
+              onClick={() =>
+                void action(async () => {
+                  const scripts = records.filter(
+                    (r) =>
+                      r.kind === "script" &&
+                      primaryRecord(r) &&
+                      r.content.episode === episode,
+                  );
+                  if (!scripts.length)
+                    throw Error("本话还没有脚本，请先生成并审核");
+                  await submitJob(pid, "package", scripts);
+                  setNotice("本话生图包任务已提交，已有包将产生候选");
+                })
+              }
             >
-              审核本批脚本
+              根据本话脚本生成生图包
             </button>
           )}
-          <button
-            onClick={() => void create()}
-            disabled={props.kind === "package" && !!record}
-          >
-            <Plus size={16} />
-            {props.kind === "package" ? "建立本格生图包" : "新增一格"}
-          </button>
-          <button
-            className="primary"
-            onClick={() =>
-              void props.run(props.kind, record, {
-                batch: props.batch,
-                episode: props.episode,
-                panel: props.panel,
-              })
-            }
-          >
-            <Sparkles size={16} />
-            模拟{props.kind === "package" ? "编排" : "脚本"}
-          </button>
         </div>
       </div>
       <ErrorNote message={error} />
-      {all.length ? (
-        <div className="script-split">
-          <div className="script-table">
-            <table>
+      {notice && <div className="notice">{notice}</div>}
+      {selected.length > 0 && (
+        <div className="selection-bar">
+          <strong>已选 {picked.length} 格</strong>
+          <button onClick={() => setSelected([])}>清空选择</button>
+          {kind === "script" && (
+            <button
+              disabled={busy}
+              onClick={() =>
+                void action(async () => {
+                  for (const r of picked)
+                    await api(
+                      recPath(r) + "/reviews",
+                      json("POST", {
+                        version: r.version,
+                        decision: "approved",
+                        note: "逐格审核通过",
+                      }),
+                    );
+                  setNotice("选中版本已记录审核；模拟内容不能正式放行");
+                })
+              }
+            >
+              通过所选版本
+            </button>
+          )}
+          <button onClick={() => setDiscuss(true)}>讨论并修改选中格</button>
+          {kind === "script" ? (
+            <button
+              disabled={busy}
+              onClick={() =>
+                void action(async () => {
+                  await submitJob(pid, "package", picked);
+                  setNotice("选中格生图包已排队");
+                })
+              }
+            >
+              生成所选生图包
+            </button>
+          ) : (
+            <button
+              disabled={busy}
+              onClick={() =>
+                void action(async () => {
+                  const ready = picked.filter((r) => r.content.prompt?.trim());
+                  if (!ready.length) throw Error("所选格都缺少完整提示词");
+                  await submitJob(pid, "image", ready);
+                  setNotice(
+                    `已提交${ready.length}格；${picked.length - ready.length}格缺少提示词未提交`,
+                  );
+                })
+              }
+            >
+              生成所选图片 · 模拟
+            </button>
+          )}
+        </div>
+      )}
+      {kind === "script" ? (
+        <>
+          <div className="table-guidance">
+            <span>完整成品脚本 · 横向滚动查看全部11列</span>
+            <span>点击格号放大阅读，勾选后审核或修改</span>
+          </div>
+          <div
+            className="script-table-scroll"
+            ref={tableRef}
+            onScroll={(e) =>
+              localStorage.setItem(
+                scrollKey,
+                JSON.stringify({
+                  top: e.currentTarget.scrollTop,
+                  left: e.currentTarget.scrollLeft,
+                }),
+              )
+            }
+          >
+            <table className="full-script-table">
               <thead>
                 <tr>
                   <th>
-                    <button
-                      className="text-button"
-                      onClick={() => setSort(!sort)}
-                    >
-                      格号 {sort ? "↓" : "↑"}
-                    </button>
+                    <input
+                      type="checkbox"
+                      aria-label="选择当前显示全部格"
+                      checked={
+                        rows.length > 0 &&
+                        rows.every((r) => selected.includes(r.id))
+                      }
+                      onChange={(e) =>
+                        setSelected(
+                          e.target.checked ? rows.map((r) => r.id) : [],
+                        )
+                      }
+                    />
                   </th>
-                  <th>内容</th>
-                  <th>状态</th>
+                  {scriptFields.map(([k, l]) => (
+                    <th key={k}>{l}</th>
+                  ))}
+                  <th>审核 / 候选</th>
                 </tr>
               </thead>
               <tbody>
-                {rows.map((r) => (
-                  <tr
+                {rows.map((r, i) => (
+                  <ScriptRows
                     key={r.id}
-                    className={record?.id === r.id ? "active" : ""}
-                    onClick={() => {
-                      setSelectedId(r.id);
-                      props.onPanel(r.content.panel);
+                    r={r}
+                    first={
+                      !i || rows[i - 1].content.episode !== r.content.episode
+                    }
+                    selected={selected.includes(r.id)}
+                    toggle={() => toggle(r.id)}
+                    open={() => {
+                      props.onLocation(r.content.episode, r.content.panel);
+                      setDetail(r);
                     }}
-                  >
-                    <td>
-                      <button
-                        className="text-button"
-                        onClick={() => {
-                          setSelectedId(r.id);
-                          props.onPanel(r.content.panel);
-                        }}
-                      >
-                        {String(r.content.panel).padStart(3, "0")}
-                      </button>
-                    </td>
-                    <td>
-                      <strong>
-                        {r.content.characters ||
-                          r.content.camera ||
-                          "未填写角色"}
-                      </strong>
-                      {r.content.pending_for && (
-                        <span className="badge mock">待处理回复</span>
-                      )}
-                      <p>
-                        {r.content.description ||
-                          r.content.prompt ||
-                          "等待编辑画面内容"}
-                      </p>
-                      <small>
-                        {r.content.scene || "未指定场景"}{" "}
-                        <Badge source={r.source} />
-                      </small>
-                    </td>
-                    <td>
-                      <span className="status-text">
-                        {reviewLabel(r.review)}
-                      </span>
-                    </td>
-                  </tr>
+                    candidates={candidates(r).length}
+                    compare={() => setCompare(r)}
+                  />
                 ))}
               </tbody>
             </table>
-            {!rows.length && (
-              <p className="muted padded">没有匹配的格，请调整筛选。</p>
-            )}
           </div>
-          {record ? (
-            <PanelForm
-              key={record.id}
-              record={record}
-              onSaved={props.onSaved}
-              assets={props.records.filter((r) =>
-                ["asset", "style"].includes(r.kind),
-              )}
-            />
-          ) : (
-            <Empty title="选择一个话格">从左侧表格选择需要编辑的画面。</Empty>
+        </>
+      ) : (
+        <div className="package-layout">
+          <nav className="panel-rail" aria-label="生图包话格">
+            {rows.map((r) => (
+              <div key={r.id} className={current?.id === r.id ? "active" : ""}>
+                <input
+                  aria-label={`选择第${r.content.episode}话第${r.content.panel}格`}
+                  type="checkbox"
+                  checked={selected.includes(r.id)}
+                  onChange={() => toggle(r.id)}
+                />
+                <button
+                  onClick={() =>
+                    props.onLocation(r.content.episode, r.content.panel)
+                  }
+                >
+                  <strong>
+                    {r.content.episode}话 / {r.content.panel}格
+                  </strong>
+                  <small>{r.content.scene || "场景未标注"}</small>
+                  <span>
+                    v{r.version} ·{" "}
+                    {r.content.prompt?.trim() ? "提示词已备" : "缺少提示词"}
+                  </span>
+                </button>
+                {candidates(r).length > 0 && (
+                  <button onClick={() => setCompare(r)}>
+                    候选 {candidates(r).length}
+                  </button>
+                )}
+              </div>
+            ))}
+          </nav>
+          {current && (
+            <PackageDetail key={current.id} {...props} record={current} />
           )}
         </div>
-      ) : (
+      )}
+      {!rows.length && (
         <Empty
           title={
-            props.kind === "package"
-              ? "把本格设计整理为完整输入"
-              : "这一话的第一个画面"
-          }
-          action={
-            <button onClick={() => void create()}>
-              <Plus size={16} />
-              创建{props.kind === "package" ? "生图包" : "第一格"}
-            </button>
+            kind === "script" ? "从细纲开始生成成品脚本" : "本范围尚无生图包"
           }
         >
-          每一格都有稳定的身份、独立版本和对应审核依据。
+          {kind === "script"
+            ? "选定起止话，生成后在这里连续审阅；无需逐格手工创建。"
+            : "先在脚本审核中选择话格，再生成对应生图包。"}
         </Empty>
       )}
-      {batchReview && (
-        <Drawer title="批次脚本审核" onClose={() => setBatchReview(false)}>
-          <p>
-            第 {(props.batch - 1) * 10 + 1}–{props.batch * 10}{" "}
-            话范围内，审核当前已有 {batchScripts.length}{" "}
-            格的准确版本。未建立的格不视为已完成。
-          </p>
-          <p className="notice">模拟脚本仅记录模拟审核，不满足正式制作条件。</p>
-          <label>
-            批次审核意见
-            <textarea
-              value={reviewNote}
-              onChange={(e) => setReviewNote(e.target.value)}
-            />
-          </label>
-          <div className="actions">
-            <button
-              className="primary"
-              onClick={() => void reviewBatch("approved")}
-            >
-              通过所列版本
-            </button>
-            <button onClick={() => void reviewBatch("changes")}>
-              需要修改
-            </button>
-          </div>
-          <h3>批次历史</h3>
-          {batchHistory.map((h) => (
-            <div className="task" key={h.id}>
-              <strong>
-                {h.stale ? "输入已变化，需重审" : reviewLabel(h.decision)}
-              </strong>
-              <p>{h.note || "未填写意见"}</p>
-              <small>
-                {h.records.length} 格 ·{" "}
-                {new Date(h.created).toLocaleString("zh-CN")}
-              </small>
-              <details>
-                <summary>版本清单</summary>
-                {h.records.map((ref: any) => (
-                  <p key={ref.id}>
-                    {ref.id.slice(0, 8)} · v{ref.version} ·{" "}
-                    {ref.source === "mock" ? "模拟" : "正式来源"}
-                  </p>
-                ))}
-              </details>
-            </div>
-          ))}
+      {range && (
+        <RangeGeneration
+          pid={pid}
+          records={records}
+          refresh={props.refresh}
+          onClose={() => setRange(false)}
+        />
+      )}{" "}
+      {detail && (
+        <ScriptDetail
+          key={detail.id}
+          record={records.find((r) => r.id === detail.id) || detail}
+          onSaved={props.onSaved}
+          onClose={() => setDetail(null)}
+        />
+      )}
+      {discuss && (
+        <Drawer
+          title={`修改选中的 ${picked.length} 格`}
+          onClose={() => setDiscuss(false)}
+        >
+          <Conversation
+            key={picked.map((r) => r.id + ":" + r.version).join(",")}
+            pid={pid}
+            refs={picked}
+            operation="rewrite"
+            refresh={props.refresh}
+          />
         </Drawer>
       )}
+      {compare && (
+        <CandidateReview
+          record={records.find((r) => r.id === compare.id) || compare}
+          candidates={candidates(compare)}
+          onSaved={(r) => {
+            props.onSaved(r);
+            void props.refresh();
+          }}
+          onClose={() => setCompare(null)}
+        />
+      )}
+    </div>
+  );
+}
+function ScriptRows({
+  r,
+  first,
+  selected,
+  toggle,
+  open,
+  candidates,
+  compare,
+}: {
+  r: RecordItem;
+  first: boolean;
+  selected: boolean;
+  toggle: () => void;
+  open: () => void;
+  candidates: number;
+  compare: () => void;
+}) {
+  return (
+    <>
+      {first && (
+        <tr className="episode-heading">
+          <th colSpan={13}>
+            第{r.content.episode}话 ·{" "}
+            {r.content.episode_title || "话标题未标注"}
+            <span>原著范围：{r.content.source_range || "未标注"}</span>
+          </th>
+        </tr>
+      )}
+      <tr className={selected ? "row-selected" : ""}>
+        <td>
+          <input
+            type="checkbox"
+            aria-label={`选择第${r.content.episode}话第${r.content.panel}格`}
+            checked={selected}
+            onChange={toggle}
+          />
+        </td>
+        {scriptFields.map(([k]) => (
+          <td key={k} className={"field-" + k}>
+            {k === "panel" ? (
+              <button onClick={open}>
+                {String(r.content.panel).padStart(2, "0")}
+              </button>
+            ) : (
+              r.content[k] || "—"
+            )}
+          </td>
+        ))}
+        <td>
+          <span>
+            {reviewLabel(r.review)} · v{r.version}
+          </span>
+          <Badge source={r.source} />
+          {candidates > 0 && (
+            <button onClick={compare}>比较 {candidates} 个候选</button>
+          )}
+        </td>
+      </tr>
     </>
   );
 }

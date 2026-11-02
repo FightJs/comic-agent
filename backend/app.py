@@ -17,6 +17,7 @@ from PIL import Image, UnidentifiedImageError
 from pydantic import BaseModel, Field
 from .store import Store, uid, now, dump
 from .simulation import content_for, demo_image
+from .workflow import register_workflow
 
 
 class MacVault:
@@ -407,10 +408,14 @@ def create_app(data_dir=None):
             with store.db() as db: db.execute("UPDATE tasks SET status='failed',error=?,updated=? WHERE id=?",(message,now(),tid))
 
     @app.get('/api/projects/{pid}/tasks')
-    def tasks(pid:str):
+    def tasks(pid:str,compact:bool=False):
         with store.db() as db:
             store.project(db,pid)
-            return [{**dict(r),'payload':json.loads(r['payload']),'source':'mock'} for r in db.execute('SELECT * FROM tasks WHERE project_id=? ORDER BY created DESC',(pid,))]
+            result=[{**dict(r),'payload':json.loads(r['payload']),'source':'mock'} for r in db.execute('SELECT * FROM tasks WHERE project_id=? ORDER BY created DESC',(pid,))]
+            if compact:
+                for item in result:
+                    for key in ('originals','skeletons','outline','context','assets','conversation'): item['payload'].pop(key,None)
+            return result
 
     @app.post('/api/projects/{pid}/tasks')
     def start_task(pid:str,body:TaskIn,background:BackgroundTasks):
@@ -440,7 +445,7 @@ def create_app(data_dir=None):
             payload=json.loads(row['payload']); payload['fail']=False
             if payload.get('target_id') and store.get(db,pid,payload['target_id'])['version']!=payload['input_version']: raise HTTPException(409,'原输入版本已变化，请发起新任务')
             db.execute("UPDATE tasks SET status='queued',payload=?,error='',updated=? WHERE id=?",(dump(payload),now(),tid))
-        background.add_task(run_task,tid)
+        background.add_task(run_workflow if payload.get("workflow") else run_task,tid)
         return {'id':tid,'status':'queued'}
 
     def settings_profiles(db):
@@ -470,6 +475,8 @@ def create_app(data_dir=None):
             profiles[body.purpose]=body.model_dump(exclude={'secret'})
             db.execute('INSERT INTO settings VALUES(1,?) ON CONFLICT(id) DO UPDATE SET content=excluded.content',(dump(profiles),))
             return settings_value(db,body.purpose)
+
+    run_workflow = register_workflow(app,store)
 
     frontend=Path(__file__).resolve().parents[1]/'frontend'/'dist'
     if frontend.exists(): app.mount('/',StaticFiles(directory=frontend,html=True),name='frontend')

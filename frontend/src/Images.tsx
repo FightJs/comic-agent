@@ -1,495 +1,191 @@
-import { useViewState } from "./useViewState";
 import { useEffect, useState } from "react";
-import {
-  Upload,
-  Download,
-  Sparkles,
-  Columns2,
-  Check,
-  Grid2X2,
-  ArrowLeft,
-  History,
-} from "lucide-react";
-import { api, base, json, recPath, downloadZip, type RecordItem } from "./api";
-import { Badge, Empty, ErrorNote, Drawer } from "./ui";
-import { AnnotationCanvas } from "./AnnotationCanvas";
-import { filterImages } from "./logic";
+import { api, base, json, recPath, downloadZip, RecordItem } from "./api";
+import { AnnotationCanvas, Annotation } from "./AnnotationCanvas";
+import { CandidateReview, Conversation } from "./Workflow";
+import { primaryRecord } from "./workflowLogic";
+import { useViewState } from "./useViewState";
+import { Badge, Drawer, Empty, ErrorNote } from "./ui";
 import { RecordHistory } from "./DocumentEditor";
 import type { ProductionProps } from "./Production";
-
-function ReviewImage({
-  record,
-  onSaved,
-  refresh,
-  run,
-  pid,
-}: ProductionProps & { record: RecordItem }) {
-  const [versions, setVersions] = useState<RecordItem[]>([]),
-    [selected, setSelected] = useState(record.adopted),
+export function Images(props: ProductionProps & { modify?: boolean }) {
+  const { pid, records, episode, panel } = props;
+  const heads = records.filter((r) => r.kind === "image" && primaryRecord(r));
+  const [effective, setEffective] = useState<RecordItem[]>([]),
+    [selected, setSelected] = useState<string[]>([]),
+    [query, setQuery] = useViewState(pid + ":images:query", ""),
+    [filter, setFilter] = useViewState(pid + ":images:filter", "all"),
+    [scope, setScope] = useViewState(pid + ":images:scope", "batch"),
+    [view, setView] = useState<RecordItem | null>(null),
+    [versions, setVersions] = useState<RecordItem[]>([]),
     [compare, setCompare] = useState(false),
+    [candidate, setCandidate] = useState<RecordItem | null>(null),
     [error, setError] = useState(""),
     [history, setHistory] = useState(false),
-    [instruction, setInstruction] = useState(""),
-    [issue, setIssue] = useState(""),
-    [severity, setSeverity] = useState("minor"),
-    [characters, setCharacters] = useState(""),
-    [scene, setScene] = useState("");
-  const load = () =>
-    api<RecordItem[]>(recPath(record) + "/versions")
-      .then(setVersions)
-      .catch((e) => setError(e.message));
+    [details, setDetails] = useState(false),
+    [hideRail, setHideRail] = useState(false),
+    [hideChat, setHideChat] = useState(false),
+    [annotations, setAnnotations] = useState<Annotation[]>([]),
+    [saved, setSaved] = useState(false),
+    [annotationRevision, setAnnotationRevision] = useState(0),
+    [focusAnnotation, setFocusAnnotation] = useState("");
+  const signature = heads
+    .map((r) => r.id + ":" + r.version + ":" + r.adopted)
+    .join(",");
   useEffect(() => {
-    void load();
-  }, [record.version, record.adopted]);
-  const current = versions.find((v) => v.version === selected) || record;
-  useEffect(() => {
-    setCharacters(current.content.characters || "");
-    setScene(current.content.scene || "");
-  }, [current.version, current.id]);
-  const adopt = async () => {
-    try {
-      onSaved(
-        await api<RecordItem>(
-          recPath(record) + "/adopt",
-          json("POST", { version: selected }),
-        ),
-      );
-      await refresh();
-    } catch (e) {
-      setError((e as Error).message);
-    }
-  };
-  const changeIssues = async (
-    issues: any[],
-    checked: boolean,
-    metadata: Record<string, any> = {},
-  ) => {
-    try {
-      if (current.version !== record.version)
-        throw new Error("请先切换到最新版本记录问题；历史检查结果保持不变。");
-      const r = await api<RecordItem>(
-        recPath(record),
-        json("PUT", {
-          expected_version: record.version,
-          content: { ...current.content, ...metadata, issues, checked },
-        }),
-      );
-      const keepAdopted = current.version === record.adopted;
-      if (keepAdopted)
-        await api(
-          recPath(record) + "/adopt",
-          json("POST", { version: r.version }),
-        );
-      onSaved({ ...r, adopted: keepAdopted ? r.version : record.adopted });
-      setSelected(r.version);
-      setIssue("");
-      await refresh();
-    } catch (e) {
-      setError((e as Error).message);
-    }
-  };
-  const importVersion = async (file?: File) => {
-    if (!file) return;
-    const form = new FormData();
-    form.append("file", file);
-    form.append("kind", "image");
-    form.append("record_id", record.id);
-    form.append("expected_version", String(record.version));
-    try {
-      const r = await api<RecordItem>(base(pid) + "/images", {
-        method: "POST",
-        body: form,
-      });
-      onSaved(r);
-      setSelected(r.version);
-    } catch (e) {
-      setError((e as Error).message);
-    }
-  };
-  return (
-    <>
-      <div className="image-header">
-        <div className="actions">
-          <Badge source={current.source} />
-          <select
-            aria-label="查看图片版本"
-            value={selected}
-            onChange={(e) => setSelected(Number(e.target.value))}
-          >
-            {versions.map((v) => (
-              <option key={v.version} value={v.version}>
-                v{v.version} {v.version === record.adopted ? "· 当前采用" : ""}{" "}
-                {v.source === "mock" ? "· 模拟" : ""}
-              </option>
-            ))}
-          </select>
-          <button onClick={() => setCompare(!compare)}>
-            <Columns2 size={16} />
-            {compare ? "关闭对比" : "版本对比"}
-          </button>
-        </div>
-        <div className="actions">
-          <label className="button">
-            <Upload size={16} />
-            导入新版本
-            <input
-              type="file"
-              aria-label="导入图片新版本"
-              className="file-input"
-              accept="image/png,image/jpeg"
-              onChange={(e) => {
-                void importVersion(e.target.files?.[0]);
-                e.target.value = "";
-              }}
-            />
-          </label>
-          <button onClick={() => setHistory(true)}>
-            <History size={16} />
-            审核
-          </button>
-          <button
-            className="primary"
-            onClick={() => void adopt()}
-            disabled={selected === record.adopted}
-          >
-            <Check size={16} />
-            {selected === record.adopted ? "当前采用" : "采用此版本"}
-          </button>
-        </div>
-      </div>
-      <ErrorNote message={error} />
-      {current.source === "mock" && (
-        <div className="notice">
-          当前为模拟图片，检查结论仅用于流程演示，不满足正式生产审核条件。
-        </div>
-      )}
-      {compare ? (
-        <div className="image-comparison">
-          {[
-            versions.find((v) => v.version === record.adopted) || record,
-            current,
-          ].map((v, i) => (
-            <div key={i}>
-              <h4>
-                {i ? "正在查看" : "当前采用"} · v{v.version}
-              </h4>
-              <img
-                src={v.content.url}
-                alt={`${record.title} 版本 ${v.version}`}
-              />
-              <Badge source={v.source} />
-              <p>{v.content.issues?.length || 0} 条对应版本问题</p>
-            </div>
-          ))}
-        </div>
-      ) : (
-        <AnnotationCanvas
-          key={`${current.id}-${current.version}`}
-          record={current}
-        />
-      )}
-      <div className="review-bottom">
-        <section>
-          <h3>本版本资料与问题</h3>
-          <div className="form-grid">
-            <label>
-              图片人物
-              <input
-                value={characters}
-                onChange={(e) => setCharacters(e.target.value)}
-              />
-            </label>
-            <label>
-              图片场景
-              <input value={scene} onChange={(e) => setScene(e.target.value)} />
-            </label>
-          </div>
-          <button
-            disabled={current.version !== record.version}
-            onClick={() =>
-              void changeIssues(
-                current.content.issues || [],
-                !!current.content.checked,
-                { characters, scene },
-              )
-            }
-          >
-            保存人物与场景
-          </button>
-          {!current.content.checked && (
-            <div className="notice">尚未检查，不能等同于无问题。</div>
-          )}
-          {current.content.issues?.length
-            ? current.content.issues.map((item: any, i: number) => (
-                <div className="issue" key={item.id || i}>
-                  <span className={`severity ${item.severity}`}>
-                    {item.severity === "major"
-                      ? "重大"
-                      : item.severity === "general"
-                        ? "一般"
-                        : "轻微"}
-                  </span>
-                  <div>
-                    <p>{item.text}</p>
-                    <small>{item.basis || "人工观察"}</small>
-                  </div>
-                  <button
-                    disabled={current.version !== record.version}
-                    onClick={() =>
-                      void changeIssues(
-                        current.content.issues.filter(
-                          (_: any, n: number) => n !== i,
-                        ),
-                        true,
-                      )
-                    }
-                  >
-                    标为解决
-                  </button>
-                </div>
-              ))
-            : current.content.checked && (
-                <p className="muted">本版本没有记录遗留问题。</p>
-              )}
-          <label>
-            记录人工观察
-            <textarea
-              aria-label="问题描述"
-              value={issue}
-              onChange={(e) => setIssue(e.target.value)}
-              placeholder="观察到什么，以及正确目标是什么"
-            />
-          </label>
-          <div className="actions">
-            <select
-              aria-label="问题严重程度"
-              value={severity}
-              onChange={(e) => setSeverity(e.target.value)}
-            >
-              <option value="minor">轻微</option>
-              <option value="general">一般</option>
-              <option value="major">重大</option>
-            </select>
-            <button
-              disabled={!issue.trim() || current.version !== record.version}
-              onClick={() =>
-                void changeIssues(
-                  [
-                    ...(current.content.issues || []),
-                    {
-                      id: crypto.randomUUID(),
-                      severity,
-                      text: issue,
-                      basis: "人工观察",
-                    },
-                  ],
-                  true,
-                )
-              }
-            >
-              保存问题
-            </button>
-            <button
-              disabled={current.version !== record.version}
-              onClick={() =>
-                void changeIssues(current.content.issues || [], true)
-              }
-            >
-              记录已检查
-            </button>
-          </div>
-        </section>
-        <section>
-          <h3>整体调整</h3>
-          <label>
-            修改要求
-            <textarea
-              aria-label="整体调整要求"
-              value={instruction}
-              onChange={(e) => setInstruction(e.target.value)}
-              placeholder="描述机位、空间、站位的整体调整，或填写新的提示词"
-              rows={4}
-            />
-          </label>
-          <p className="muted">
-            保留原图与历史。当前使用模拟修改及模拟复查；新版本需由你决定是否采用。
-          </p>
-          <button
-            className="primary"
-            disabled={!instruction.trim()}
-            onClick={() =>
-              void run("repair", record, {
-                instruction,
-                base_image_version: current.version,
-              })
-            }
-          >
-            <Sparkles size={16} />
-            模拟修改与复查
-          </button>
-          <p className="muted">
-            规则：先检查整体空间，再检查修改目标与保护区域；不自动追加下一轮修改。
-          </p>
-        </section>
-      </div>
-      {history && (
-        <RecordHistory
-          record={current}
-          onSaved={onSaved}
-          onClose={() => setHistory(false)}
-        />
-      )}
-    </>
-  );
-}
-export function Images(props: ProductionProps & { modify: boolean }) {
-  const [effective, setEffective] = useState<RecordItem[]>([]),
-    [query, setQuery] = useViewState(
-      props.pid + ":" + props.batch + ":image-query",
-      "",
-    ),
-    [source, setSource] = useViewState(
-      props.pid + ":" + props.batch + ":image-source",
-      "all",
-    ),
-    [status, setStatus] = useViewState(
-      props.pid + ":" + props.batch + ":image-status",
-      "all",
-    ),
-    [chosen, setChosen] = useState<string[]>([]),
-    [id, setId] = useState(""),
-    [error, setError] = useState(""),
-    [notice, setNotice] = useState(""),
-    [table, setTable] = useState(false);
-  const images = props.records.filter(
-    (r) => r.kind === "image" && r.content.batch === props.batch,
-  );
-  const stamp = images
-    .map((r) => `${r.id}:${r.version}:${r.adopted}`)
-    .join("|");
-  useEffect(() => {
-    let alive = true;
+    let active = true;
     Promise.all(
-      images.map((r) =>
-        r.adopted === r.version
-          ? Promise.resolve(r)
-          : api<RecordItem>(recPath(r) + `?version=${r.adopted}`),
-      ),
+      heads.map((r) => api<RecordItem>(recPath(r) + "?version=" + r.adopted)),
     )
-      .then((x) => {
-        if (alive) setEffective(x);
+      .then((r) => {
+        if (active) setEffective(r);
+      })
+      .catch((e) => setError(e.message));
+    return () => {
+      active = false;
+    };
+  }, [signature]);
+  const visible = effective.filter(
+    (r) =>
+      (scope === "all" || scope === "episode"
+        ? scope === "all" || r.content.episode === episode
+        : r.content.batch === props.batch) &&
+      (!query ||
+        [
+          r.content.characters,
+          r.content.scene,
+          r.title,
+          String(r.content.panel),
+        ]
+          .join(" ")
+          .includes(query)) &&
+      (filter === "all" || filter === "unchecked"
+        ? !r.content.checked || filter === "all"
+        : (r.content.issues || []).some(
+            (x: any) => filter === "issues" || x.severity === filter,
+          )),
+  );
+  const active =
+    visible.find(
+      (r) => r.content.episode === episode && r.content.panel === panel,
+    ) || visible[0];
+  const head = heads.find((r) => r.id === active?.id);
+  useEffect(() => {
+    if (
+      active &&
+      (active.content.episode !== episode || active.content.panel !== panel)
+    )
+      props.onLocation(active.content.episode, active.content.panel);
+  }, [active?.id, episode, panel]);
+  useEffect(() => {
+    if (!active) {
+      setView(null);
+      return;
+    }
+    let alive = true;
+    setView(active);
+    setSaved(false);
+    setAnnotations([]);
+    api<RecordItem[]>(recPath(active) + "/versions")
+      .then((r) => {
+        if (alive) setVersions(r);
       })
       .catch((e) => setError(e.message));
     return () => {
       alive = false;
     };
-  }, [stamp]);
-  const rows = filterImages(effective, { source, query, status }).sort(
-    (a, b) =>
-      a.content.episode - b.content.episode ||
-      a.content.panel - b.content.panel,
-  );
-  const [overview, setOverview] = useState(!props.modify);
-  const current = overview
-    ? undefined
-    : images.find(
-        (r) =>
-          r.content.episode === props.episode &&
-          r.content.panel === props.panel &&
-          (r.id === id || !id),
-      ) ||
-      images.find(
-        (r) =>
-          r.content.episode === props.episode &&
-          r.content.panel === props.panel,
-      );
-  const upload = async (file?: File) => {
-    if (!file) return;
-    const form = new FormData();
-    form.append("file", file);
-    form.append("kind", "image");
-    form.append("batch", String(props.batch));
-    form.append("episode", String(props.episode));
-    form.append("panel", String(Math.max(1, props.panel)));
-    const existing = images.find(
-      (r) =>
-        r.content.episode === props.episode &&
-        r.content.panel === Math.max(1, props.panel),
+  }, [active?.id, active?.version, head?.version]);
+  const picked = effective.filter((r) => selected.includes(r.id));
+  const refs = picked.length
+    ? picked.map((r) => (r.id === view?.id ? view : r))
+    : view
+      ? [view]
+      : [];
+  const candidates = (r: RecordItem) =>
+    records.filter(
+      (x) => x.content.candidate_for === r.id && !x.content.adopted_into,
     );
-    if (existing) {
-      form.append("record_id", existing.id);
-      form.append("expected_version", String(existing.version));
-    }
+  const importImage = async (file?: File, asVersion = false) => {
+    if (!file) return;
     try {
-      const r = await api<RecordItem>(base(props.pid) + "/images", {
-        method: "POST",
-        body: form,
-      });
-      props.onSaved(r);
-      setId(r.id);
-      setOverview(false);
+      const data = new FormData();
+      data.append("file", file);
+      data.append("kind", "image");
+      data.append("batch", String(props.batch));
+      data.append("episode", String(episode));
+      data.append("panel", String(panel));
+      if (asVersion && head) {
+        data.append("record_id", head.id);
+        data.append("expected_version", String(head.version));
+      }
+      props.onSaved(
+        await api(base(pid) + "/images", { method: "POST", body: data }),
+      );
+      await props.refresh();
     } catch (e) {
       setError((e as Error).message);
     }
   };
-  const download = async () => {
-    if (effective.some((r) => chosen.includes(r.id) && r.source === "mock"))
-      setNotice("下载中包含模拟图片，不能作为真实 AI 生成成果。");
+  const adoption = async () => {
+    if (!view) return;
     try {
-      await downloadZip(props.pid, chosen);
+      props.onSaved(
+        await api(
+          recPath(view) + "/adopt",
+          json("POST", { version: view.version }),
+        ),
+      );
+      await props.refresh();
     } catch (e) {
       setError((e as Error).message);
     }
   };
   return (
-    <>
-      <div className="section-tools">
+    <div
+      className={
+        "image-studio" +
+        (hideRail ? " rail-hidden" : "") +
+        (hideChat ? " chat-hidden" : "")
+      }
+    >
+      <div className="studio-toolbar">
         <div className="actions">
-          {current ? (
-            <button
-              onClick={() => {
-                setId("");
-                setOverview(true);
-              }}
-            >
-              <ArrowLeft size={16} />
-              返回批次速览
-            </button>
-          ) : (
-            <>
-              <input
-                aria-label="搜索图片"
-                placeholder="按人物、场景、文件名筛选"
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-              />
-              <select
-                aria-label="图片来源"
-                value={source}
-                onChange={(e) => setSource(e.target.value)}
-              >
-                <option value="all">全部来源</option>
-                <option value="import">人工导入</option>
-                <option value="mock">模拟</option>
-              </select>
-              <select
-                aria-label="图片问题状态"
-                value={status}
-                onChange={(e) => setStatus(e.target.value)}
-              >
-                <option value="all">全部状态</option>
-                <option value="unreviewed">未审</option>
-                <option value="major">重大遗留</option>
-                <option value="general">一般问题</option>
-                <option value="minor">轻微问题</option>
-                <option value="clear">无遗留</option>
-              </select>
-            </>
-          )}
+          <button onClick={() => setHideRail(!hideRail)}>
+            {hideRail ? "显示缩略图" : "收起缩略图"}
+          </button>
+          <button onClick={() => setHideChat(!hideChat)}>
+            {hideChat ? "显示批注对话" : "专注画布"}
+          </button>
+          <select
+            aria-label="图片显示范围"
+            value={scope}
+            onChange={(e) => setScope(e.target.value)}
+          >
+            <option value="batch">当前10话</option>
+            <option value="episode">当前话</option>
+            <option value="all">全部话</option>
+          </select>
         </div>
         <div className="actions">
+          <span>
+            {selected.length
+              ? `已选 ${selected.length} 张`
+              : "点击图片审核，勾选多图共同修改"}
+          </span>
+          {selected.length > 0 && (
+            <>
+              <button onClick={() => setSelected([])}>清空</button>
+              <button
+                onClick={() =>
+                  void downloadZip(pid, selected).catch((e) =>
+                    setError(e.message),
+                  )
+                }
+              >
+                下载选中原图
+              </button>
+            </>
+          )}
           <label className="button">
-            <Upload size={16} />
             导入本格图片
             <input
               className="file-input"
@@ -497,182 +193,389 @@ export function Images(props: ProductionProps & { modify: boolean }) {
               aria-label="导入本格图片"
               accept="image/png,image/jpeg"
               onChange={(e) => {
-                void upload(e.target.files?.[0]);
+                void importImage(e.target.files?.[0]);
                 e.target.value = "";
               }}
             />
           </label>
-          <button
-            className="primary"
-            onClick={() =>
-              void props.run("image", undefined, {
-                batch: props.batch,
-                episode: props.episode,
-                panel: Math.max(1, props.panel),
-              })
-            }
-          >
-            <Sparkles size={16} />
-            模拟生图
-          </button>
         </div>
       </div>
       <ErrorNote message={error} />
-      {notice && <div className="notice">{notice}</div>}
-      {current ? (
-        <ReviewImage key={current.id} {...props} record={current} />
-      ) : rows.length ? (
-        <>
-          <div className="download-bar">
-            <span>
-              <Grid2X2 size={16} />
-              批次速览 · {rows.length} 张
-            </span>
-            <div className="actions">
-              <button onClick={() => setTable(!table)}>
-                {table ? "图片速览" : "问题总览"}
-              </button>
-              <button
-                onClick={() =>
-                  setChosen(
-                    chosen.length === rows.length ? [] : rows.map((r) => r.id),
-                  )
+      <div className="studio-columns">
+        {!hideRail && (
+          <aside className="thumbnail-rail">
+            <input
+              placeholder="查找人物、场景、格号"
+              aria-label="查找图片"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+            />
+            <select
+              aria-label="问题筛选"
+              value={filter}
+              onChange={(e) => setFilter(e.target.value)}
+            >
+              <option value="all">全部图片</option>
+              <option value="unchecked">未检查</option>
+              <option value="issues">有问题</option>
+              <option value="major">重大问题</option>
+              <option value="general">一般问题</option>
+              <option value="minor">轻微问题</option>
+            </select>
+            <label className="select-visible">
+              <input
+                type="checkbox"
+                checked={
+                  visible.length > 0 &&
+                  visible.every((r) => selected.includes(r.id))
                 }
+                onChange={(e) =>
+                  setSelected(e.target.checked ? visible.map((r) => r.id) : [])
+                }
+              />
+              选择当前显示 {visible.length} 张
+            </label>
+            {visible.map((r) => (
+              <article
+                className={active?.id === r.id ? "active" : ""}
+                key={r.id}
               >
-                {chosen.length === rows.length ? "取消全选" : "选择全部"}
-              </button>
-              <button disabled={!chosen.length} onClick={() => void download()}>
-                <Download size={16} />
-                下载选中（{chosen.length}）
-              </button>
-            </div>
-          </div>
-          {table && (
-            <div className="problem-table">
-              <table>
-                <thead>
-                  <tr>
-                    <th>话格</th>
-                    <th>采用版本</th>
-                    <th>状态与遗留问题</th>
-                    <th>来源</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {rows.map((r) => (
-                    <tr key={r.id}>
-                      <td>
-                        <button
-                          onClick={() => {
-                            setId(r.id);
-                            props.onLocation(
-                              r.content.episode,
-                              r.content.panel,
-                            );
-                            setOverview(false);
-                          }}
-                        >
-                          第{r.content.episode}话 · {r.content.panel}格
-                        </button>
-                      </td>
-                      <td>v{r.version}</td>
-                      <td>
-                        {!r.content.checked
-                          ? "未审"
-                          : !r.content.issues?.length
-                            ? "无遗留问题"
-                            : r.content.issues.map((issue: any) => (
-                                <p key={issue.id}>
-                                  {issue.severity === "major"
-                                    ? "重大"
-                                    : issue.severity === "general"
-                                      ? "一般"
-                                      : "轻微"}{" "}
-                                  · {issue.text}
-                                </p>
-                              ))}
-                      </td>
-                      <td>
-                        <Badge source={r.source} />
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-          <div
-            className="image-grid"
-            style={table ? { display: "none" } : undefined}
-          >
-            {rows.map((r) => (
-              <article className="image-tile" key={r.id}>
-                <label className="image-check">
+                <div className="thumb-caption">
                   <input
                     type="checkbox"
-                    aria-label={`选择第${r.content.episode}话第${r.content.panel}格`}
-                    checked={chosen.includes(r.id)}
-                    onChange={(e) =>
-                      setChosen(
-                        e.target.checked
-                          ? [...chosen, r.id]
-                          : chosen.filter((x) => x !== r.id),
+                    aria-label={`选择图片${r.content.episode}话${r.content.panel}格`}
+                    checked={selected.includes(r.id)}
+                    onChange={() =>
+                      setSelected((s) =>
+                        s.includes(r.id)
+                          ? s.filter((x) => x !== r.id)
+                          : [...s, r.id],
                       )
                     }
                   />
-                </label>
+                  <strong>
+                    {r.content.episode}话 · {r.content.panel}格
+                  </strong>
+                  <small>v{r.version}</small>
+                </div>
                 <button
-                  className="image-open"
-                  onClick={() => {
-                    setId(r.id);
-                    setOverview(false);
-                    props.onLocation(r.content.episode, r.content.panel);
-                    setOverview(false);
-                  }}
+                  className="thumbnail-button"
+                  onClick={() =>
+                    props.onLocation(r.content.episode, r.content.panel)
+                  }
                 >
-                  <img src={r.content.url} alt={r.title} />
-                  <div>
-                    <strong>
-                      第 {r.content.episode} 话 ·{" "}
-                      {String(r.content.panel).padStart(3, "0")}
-                    </strong>
-                    <Badge source={r.source} />
-                    <span>
-                      {!r.content.checked
-                        ? "未审"
-                        : r.content.issues?.some(
-                              (i: any) => i.severity === "major",
-                            )
-                          ? "重大遗留"
-                          : r.content.issues?.length
-                            ? "需人工修改"
-                            : "无遗留问题"}{" "}
-                      · v{r.version}
-                    </span>
-                  </div>
+                  <img
+                    src={r.content.url}
+                    alt={`第${r.content.episode}话第${r.content.panel}格`}
+                  />
                 </button>
-                <a
-                  className="single-download"
-                  href={r.content.url + "?download=true"}
-                  download
-                  onClick={() => {
-                    if (r.source === "mock") setNotice("你正在下载模拟图片。");
-                  }}
-                >
-                  <Download size={14} />
-                  下载原图
-                </a>
+                <small>
+                  {r.content.checked
+                    ? (r.content.issues?.length || 0) + "条问题"
+                    : "未检查"}{" "}
+                  · {r.source === "mock" ? "模拟图片" : "人工导入"}
+                </small>
+                {candidates(r).length > 0 && (
+                  <button
+                    className="candidate-link"
+                    onClick={() => setCandidate(r)}
+                  >
+                    比较修改结果 · {candidates(r).length}
+                  </button>
+                )}
               </article>
             ))}
-          </div>
-        </>
-      ) : (
-        <Empty
-          title={images.length ? "没有符合筛选条件的图片" : "让这一格成为画面"}
-        >
-          导入已有作品进行真实标注，或模拟生图体验版本比较和问题处理。
-        </Empty>
+            {!visible.length && <p>没有匹配图片</p>}
+          </aside>
+        )}
+        <section className="studio-canvas">
+          {view && head ? (
+            <>
+              <div className="canvas-version-bar">
+                <strong>
+                  第{view.content.episode}话 · 第{view.content.panel}格
+                </strong>
+                <select
+                  aria-label="查看图片版本"
+                  value={view.version}
+                  onChange={(e) => {
+                    setView(
+                      versions.find((r) => r.version === +e.target.value) ||
+                        view,
+                    );
+                    setSaved(false);
+                    setAnnotations([]);
+                  }}
+                >
+                  {versions.map((r) => (
+                    <option value={r.version} key={r.version}>
+                      v{r.version}
+                      {r.version === head.adopted ? " · 当前采用" : ""}
+                    </option>
+                  ))}
+                </select>
+                <button onClick={() => setCompare(!compare)}>
+                  {compare ? "返回画布" : "新旧对比"}
+                </button>
+                <button
+                  disabled={view.version === head.adopted}
+                  onClick={() => void adoption()}
+                >
+                  {view.version === head.adopted ? "当前采用" : "采用此版本"}
+                </button>
+                <button onClick={() => setDetails(true)}>资料与问题</button>
+              </div>
+              {view.source === "mock" && (
+                <div className="mock-ribbon">
+                  模拟图片 · 用于验证流程，未执行真实 AI 修改
+                </div>
+              )}
+              {compare ? (
+                <div className="candidate-images">
+                  {[active!, view].map((r, i) => (
+                    <figure key={i}>
+                      <img
+                        src={r.content.url}
+                        alt={i ? "正在查看" : "当前采用"}
+                      />
+                      <figcaption>
+                        {i ? "正在查看" : "当前采用"} · v{r.version}
+                      </figcaption>
+                    </figure>
+                  ))}
+                </div>
+              ) : (
+                <AnnotationCanvas
+                  key={view.id + ":" + view.version}
+                  record={view}
+                  focusAnnotation={focusAnnotation}
+                  onState={(a, s, revision) => {
+                    setAnnotationRevision(revision);
+                    setAnnotations(a);
+                    setSaved(s);
+                  }}
+                />
+              )}
+              <div className="actions">
+                <a
+                  className="button"
+                  download
+                  href={view.content.url + "?download=true"}
+                >
+                  下载当前原图
+                </a>
+                <label className="button">
+                  导入新版本
+                  <input
+                    className="file-input"
+                    aria-label="导入图片新版本"
+                    type="file"
+                    accept="image/png,image/jpeg"
+                    onChange={(e) => {
+                      void importImage(e.target.files?.[0], true);
+                      e.target.value = "";
+                    }}
+                  />
+                </label>
+                <button onClick={() => setHistory(true)}>审核与历史</button>
+                {candidates(head).length > 0 && (
+                  <button
+                    className="primary"
+                    onClick={() => setCandidate(head)}
+                  >
+                    比较候选并采用
+                  </button>
+                )}
+              </div>
+            </>
+          ) : (
+            <Empty title="图片工作区">
+              先在生图包选择话格生成图片，或导入当前格图片。筛选无结果时可调整范围。
+            </Empty>
+          )}
+        </section>
+        {!hideChat && (
+          <aside className="studio-discussion">
+            {view && (
+              <section className="region-summary">
+                <h3>
+                  当前底图区域批注 <small>v{view.version}</small>
+                </h3>
+                {annotations.length ? (
+                  annotations.map((a, i) => (
+                    <button
+                      className="region-summary-item"
+                      key={a.id}
+                      onClick={() =>
+                        setFocusAnnotation(a.id + ":" + Date.now())
+                      }
+                    >
+                      <strong>
+                        {i + 1} · {a.type === "protect" ? "保护区" : "修改区域"}
+                      </strong>
+                      <p>{a.note || "待填写建议"}</p>
+                    </button>
+                  ))
+                ) : (
+                  <p className="muted">
+                    在画面上点选或框选区域，输入修改建议。
+                  </p>
+                )}
+                <small>
+                  {saved ? "区域批注已保存" : "区域批注读取或保存中"}
+                </small>
+              </section>
+            )}
+            {refs.length > 0 && (
+              <Conversation
+                key={refs
+                  .map((r) => r.id + ":" + r.version)
+                  .sort()
+                  .join(",")}
+                pid={pid}
+                refs={refs}
+                operation="repair"
+                refresh={props.refresh}
+                annotationRevision={String(annotationRevision)}
+                annotationsReady={
+                  saved &&
+                  refs.every(
+                    (r) =>
+                      !localStorage.getItem(
+                        `comic-annotations:${r.id}:${r.version}`,
+                      ),
+                  )
+                }
+              />
+            )}
+          </aside>
+        )}
+      </div>
+      {candidate && (
+        <CandidateReview
+          record={heads.find((r) => r.id === candidate.id) || candidate}
+          candidates={candidates(candidate)}
+          onSaved={(r) => {
+            props.onSaved(r);
+            void props.refresh();
+          }}
+          onClose={() => setCandidate(null)}
+        />
+      )}{" "}
+      {history && view && (
+        <RecordHistory
+          record={view}
+          onSaved={props.onSaved}
+          onClose={() => setHistory(false)}
+        />
+      )}{" "}
+      {details && view && head && (
+        <ImageDetails
+          record={view}
+          head={head}
+          onSaved={(r) => {
+            props.onSaved(r);
+            void props.refresh();
+          }}
+          onClose={() => setDetails(false)}
+        />
       )}
-    </>
+    </div>
+  );
+}
+function ImageDetails({
+  record,
+  head,
+  onSaved,
+  onClose,
+}: {
+  record: RecordItem;
+  head: RecordItem;
+  onSaved: (r: RecordItem) => void;
+  onClose: () => void;
+}) {
+  const [text, setText] = useState(""),
+    [severity, setSeverity] = useState("general"),
+    [error, setError] = useState("");
+  const save = async (issues: any[]) => {
+    try {
+      const r = await api<RecordItem>(
+        recPath(head),
+        json("PUT", {
+          expected_version: head.version,
+          content: { ...record.content, issues, checked: true },
+        }),
+      );
+      if (record.version === head.adopted)
+        await api(
+          recPath(head) + "/adopt",
+          json("POST", { version: r.version }),
+        );
+      onSaved(r);
+      onClose();
+    } catch (e) {
+      setError((e as Error).message);
+    }
+  };
+  return (
+    <Drawer title="图片资料与问题" onClose={onClose}>
+      <Badge source={record.source} />
+      <p>
+        版本 v{record.version} · {record.content.characters || "人物未标注"} ·{" "}
+        {record.content.scene || "场景未标注"}
+      </p>
+      <ErrorNote message={error} />
+      {(record.content.issues || []).map((v: any, i: number) => (
+        <div key={i} className="issue">
+          <strong>
+            {v.severity === "major"
+              ? "重大"
+              : v.severity === "general"
+                ? "一般"
+                : "轻微"}
+          </strong>
+          <p>{v.text}</p>
+          <button
+            disabled={record.version !== head.version}
+            onClick={() =>
+              void save(
+                record.content.issues.filter((_: any, n: number) => n !== i),
+              )
+            }
+          >
+            标为解决
+          </button>
+        </div>
+      ))}
+      <label>
+        人工观察
+        <textarea value={text} onChange={(e) => setText(e.target.value)} />
+      </label>
+      <select value={severity} onChange={(e) => setSeverity(e.target.value)}>
+        <option value="general">一般</option>
+        <option value="major">重大</option>
+        <option value="minor">轻微</option>
+      </select>
+      <button
+        disabled={!text.trim() || record.version !== head.version}
+        onClick={() =>
+          void save([
+            ...(record.content.issues || []),
+            { id: crypto.randomUUID(), text, severity, basis: "人工观察" },
+          ])
+        }
+      >
+        保存问题
+      </button>
+      <button
+        disabled={record.version !== head.version}
+        onClick={() => void save(record.content.issues || [])}
+      >
+        记录已检查
+      </button>
+      {record.version !== head.version && (
+        <p>历史检查只读，请切到最新版本记录问题。</p>
+      )}
+    </Drawer>
   );
 }

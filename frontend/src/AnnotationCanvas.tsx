@@ -25,6 +25,7 @@ import {
 import { api, json, recPath, type RecordItem } from "./api";
 import { ErrorNote } from "./ui";
 import { toImagePoint } from "./logic";
+import { wheelTransform } from "./workflowLogic";
 export type Annotation = {
   id: string;
   type: string;
@@ -36,7 +37,43 @@ export type Annotation = {
   brushWidth?: number;
   note?: string;
 };
-export function AnnotationCanvas({ record }: { record: RecordItem }) {
+export function AnnotationCanvas({
+  record,
+  onState,
+  focusAnnotation,
+}: {
+  record: RecordItem;
+  focusAnnotation?: string;
+  onState?: (items: Annotation[], saved: boolean, revision: number) => void;
+}) {
+  const [space, setSpace] = useState(false),
+    [composer, setComposer] = useState(false);
+  const noteInput = useRef<HTMLTextAreaElement>(null);
+  useEffect(() => {
+    const down = (e: KeyboardEvent) => {
+      if (
+        e.code === "Space" &&
+        !(e.target instanceof HTMLInputElement) &&
+        !(e.target instanceof HTMLTextAreaElement) &&
+        !(e.target as HTMLElement)?.closest("button,select,a,[contenteditable]")
+      ) {
+        e.preventDefault();
+        setSpace(true);
+      }
+    };
+    const up = () => setSpace(false);
+    window.addEventListener("keydown", down);
+    window.addEventListener("keyup", up);
+    window.addEventListener("blur", up);
+    return () => {
+      window.removeEventListener("keydown", down);
+      window.removeEventListener("keyup", up);
+      window.removeEventListener("blur", up);
+    };
+  }, []);
+  useEffect(() => {
+    if (composer) noteInput.current?.focus();
+  }, [composer]);
   const [image, setImage] = useState<HTMLImageElement | null>(null),
     [tool, setTool] = useState("point"),
     [items, setItems] = useState<Annotation[]>([]),
@@ -59,6 +96,51 @@ export function AnnotationCanvas({ record }: { record: RecordItem }) {
     busy = useRef(false),
     blocked = useRef(false);
   latest.current = items;
+  useEffect(() => {
+    const id = focusAnnotation?.split(":")[0];
+    if (id && latest.current.some((a) => a.id === id)) {
+      setSelected(id);
+      setComposer(true);
+    }
+  }, [focusAnnotation]);
+  useEffect(() => {
+    onState?.(
+      items,
+      ready && status === "已保存" && JSON.stringify(items) === saved.current,
+      version.current,
+    );
+  }, [items, status, ready]);
+  const viewportKey = `comic-image-view:${record.id}`;
+  const initialViewport = useRef(
+    (() => {
+      try {
+        return JSON.parse(localStorage.getItem(viewportKey) || "null");
+      } catch {
+        return null;
+      }
+    })(),
+  );
+  const currentViewport = useRef({
+    scale,
+    offset,
+    width: record.content.width,
+    height: record.content.height,
+  });
+  currentViewport.current = {
+    scale,
+    offset,
+    width: record.content.width,
+    height: record.content.height,
+  };
+  useEffect(
+    () => () => {
+      localStorage.setItem(
+        viewportKey,
+        JSON.stringify(currentViewport.current),
+      );
+    },
+    [viewportKey],
+  );
   const key = `comic-annotations:${record.id}:${record.version}`;
   const fit = () => {
     const s = Math.min(
@@ -77,14 +159,30 @@ export function AnnotationCanvas({ record }: { record: RecordItem }) {
     const obs = new ResizeObserver(([e]) =>
       setSize({
         width: e.contentRect.width,
-        height: Math.max(500, Math.min(750, window.innerHeight - 290)),
+        height: Math.max(
+          280,
+          window.innerHeight - e.target.getBoundingClientRect().top - 115,
+        ),
       }),
     );
     obs.observe(container.current);
     return () => obs.disconnect();
   }, []);
   useEffect(() => {
-    fit();
+    const cached = initialViewport.current;
+    if (
+      cached &&
+      cached.width === record.content.width &&
+      cached.height === record.content.height &&
+      Number.isFinite(cached.scale) &&
+      cached.scale >= 0.05 &&
+      cached.scale <= 6 &&
+      Number.isFinite(cached.offset?.x) &&
+      Number.isFinite(cached.offset?.y)
+    ) {
+      setScale(cached.scale);
+      setOffset(cached.offset);
+    } else fit();
   }, [size.width, size.height, record.id]);
   useEffect(() => {
     const im = new Image();
@@ -165,6 +263,12 @@ export function AnnotationCanvas({ record }: { record: RecordItem }) {
     const t = setTimeout(() => void save(), 700);
     return () => clearTimeout(t);
   }, [items, ready]);
+  const zoomTo = (next: number) => {
+    const center = { x: size.width / 2, y: size.height / 2 };
+    const before = toImagePoint(center, offset, scale);
+    setScale(next);
+    setOffset({ x: center.x - before.x * next, y: center.y - before.y * next });
+  };
   const point = () => {
     const p = stage.current?.getPointerPosition();
     if (!p) return null;
@@ -175,7 +279,21 @@ export function AnnotationCanvas({ record }: { record: RecordItem }) {
     };
   };
   const down = (e: any) => {
-    if (!ready || tool === "pan" || tool === "select") return;
+    container.current?.focus({ preventScroll: true });
+    if (e.evt.button === 1) {
+      e.evt.preventDefault();
+      stage.current.draggable(true);
+      stage.current.startDrag();
+      return;
+    }
+    if (
+      !ready ||
+      space ||
+      e.evt.button === 1 ||
+      tool === "pan" ||
+      tool === "select"
+    )
+      return;
     const p = point();
     if (!p) return;
     start.current = p;
@@ -199,6 +317,7 @@ export function AnnotationCanvas({ record }: { record: RecordItem }) {
       delete a.width;
       delete a.height;
     }
+    setComposer(false);
     drawing.current = a;
     setSelected(a.id);
     undo.current.push(latest.current);
@@ -220,12 +339,20 @@ export function AnnotationCanvas({ record }: { record: RecordItem }) {
     }
     setItems(latest.current.map((x) => (x.id === a.id ? { ...a } : x)));
   };
-  const up = () => {
+  const up = (e?: any) => {
+    if (e?.evt?.button === 1) {
+      stage.current.stopDrag();
+      stage.current.draggable(tool === "pan" || space);
+    }
+    if (drawing.current) {
+      setComposer(true);
+      setStatus("未保存");
+    }
     drawing.current = null;
   };
   const chosen = items.find((a) => a.id === selected);
   return (
-    <div className="annotation-shell">
+    <div className="annotation-shell" style={{ position: "relative" }}>
       <div className="canvas-toolbar">
         {[
           ["select", "选择", MousePointer2],
@@ -269,14 +396,25 @@ export function AnnotationCanvas({ record }: { record: RecordItem }) {
         </button>
         <button
           aria-label="缩小"
-          onClick={() => setScale((s) => Math.max(0.05, s / 1.2))}
+          onClick={() => zoomTo(Math.max(0.05, scale / 1.2))}
         >
           <ZoomOut size={17} />
         </button>
-        <span>{Math.round(scale * 100)}%</span>
+        <button
+          title="原始尺寸1:1"
+          onClick={() => {
+            setScale(1);
+            setOffset({
+              x: (size.width - record.content.width) / 2,
+              y: (size.height - record.content.height) / 2,
+            });
+          }}
+        >
+          {Math.round(scale * 100)}% · 1:1
+        </button>
         <button
           aria-label="放大"
-          onClick={() => setScale((s) => Math.min(6, s * 1.2))}
+          onClick={() => zoomTo(Math.min(6, scale * 1.2))}
         >
           <ZoomIn size={17} />
         </button>
@@ -305,7 +443,12 @@ export function AnnotationCanvas({ record }: { record: RecordItem }) {
           保留本地标注并读取最新版本号
         </button>
       )}
-      <div className="canvas-area" ref={container}>
+      <div
+        className="canvas-area"
+        ref={container}
+        tabIndex={0}
+        aria-label="图片画布，按住空格拖动平移"
+      >
         <Stage
           ref={stage}
           width={size.width}
@@ -314,7 +457,7 @@ export function AnnotationCanvas({ record }: { record: RecordItem }) {
           scaleY={scale}
           x={offset.x}
           y={offset.y}
-          draggable={tool === "pan"}
+          draggable={tool === "pan" || space}
           onDragEnd={(e) => {
             if (e.target === stage.current)
               setOffset({ x: e.target.x(), y: e.target.y() });
@@ -325,11 +468,18 @@ export function AnnotationCanvas({ record }: { record: RecordItem }) {
           onMouseLeave={up}
           onWheel={(e) => {
             e.evt.preventDefault();
-            const p = stage.current.getPointerPosition(),
-              before = toImagePoint(p, offset, scale),
-              next = Math.min(
-                6,
-                Math.max(0.05, scale * (e.evt.deltaY > 0 ? 0.9 : 1.1)),
+            const p = stage.current.getPointerPosition();
+            if (!e.evt.ctrlKey && !e.evt.metaKey) {
+              setOffset((o) => ({
+                x: o.x - e.evt.deltaX,
+                y: o.y - e.evt.deltaY,
+              }));
+              return;
+            }
+            const before = toImagePoint(p, offset, scale),
+              next = wheelTransform(
+                scale,
+                e.evt.deltaY * (e.evt.deltaMode === 1 ? 16 : 1),
               );
             setScale(next);
             setOffset({ x: p.x - before.x * next, y: p.y - before.y * next });
@@ -354,7 +504,10 @@ export function AnnotationCanvas({ record }: { record: RecordItem }) {
                 stroke: color,
                 strokeWidth: 2 / scale,
                 onClick: () => {
-                  if (tool === "select") setSelected(a.id);
+                  if (tool === "select") {
+                    setSelected(a.id);
+                    setComposer(true);
+                  }
                 },
                 hitStrokeWidth: 12 / scale,
               };
@@ -375,6 +528,68 @@ export function AnnotationCanvas({ record }: { record: RecordItem }) {
           原图 {record.content.width} × {record.content.height} · v
           {record.version} · 标注单独保存
         </span>
+      </div>
+      {composer && chosen && (
+        <div
+          className="region-composer"
+          style={{
+            left: Math.max(
+              8,
+              Math.min(
+                size.width - 290,
+                (chosen.x ?? chosen.points?.[0] ?? 0) * scale + offset.x + 20,
+              ),
+            ),
+            top: Math.max(
+              64,
+              Math.min(
+                size.height - 140,
+                (chosen.y ?? chosen.points?.[1] ?? 0) * scale + offset.y + 80,
+              ),
+            ),
+          }}
+        >
+          <strong>
+            区域 {items.findIndex((a) => a.id === chosen.id) + 1} ·{" "}
+            {chosen.type === "protect" ? "保留要求" : "修改建议"}
+          </strong>
+          <textarea
+            ref={noteInput}
+            aria-label="区域批注输入"
+            rows={3}
+            value={chosen.note || ""}
+            onChange={(e) =>
+              commit(
+                items.map((a) =>
+                  a.id === chosen.id ? { ...a, note: e.target.value } : a,
+                ),
+              )
+            }
+            placeholder="描述希望如何修改，稍后在右侧汇总讨论"
+          />
+          <div className="actions">
+            <button
+              onClick={() => {
+                commit(items.filter((a) => a.id !== chosen.id));
+                setComposer(false);
+              }}
+            >
+              取消批注
+            </button>
+            <button
+              className="primary"
+              onClick={() => {
+                setComposer(false);
+                void save();
+              }}
+            >
+              完成批注
+            </button>
+          </div>
+        </div>
+      )}
+      <div className="canvas-hint">
+        双指/滚轮平移 · 捏合或 Ctrl/⌘ + 滚轮缩放 · 按住空格拖动
       </div>
       <div className="annotation-bottom">
         <div>
@@ -400,7 +615,10 @@ export function AnnotationCanvas({ record }: { record: RecordItem }) {
             <button
               key={a.id}
               className={selected === a.id ? "selected" : ""}
-              onClick={() => setSelected(a.id)}
+              onClick={() => {
+                setSelected(a.id);
+                setComposer(true);
+              }}
             >
               {i + 1}. {a.type === "protect" ? "保护区" : "修改区域"} ·{" "}
               {a.note || "待填写说明"}
