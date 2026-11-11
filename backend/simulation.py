@@ -4,13 +4,18 @@ import io
 from PIL import Image, ImageDraw
 
 
-def demo_image(index=0):
+def demo_image(index=0, scene=False):
     image=Image.new('RGB',(640,900),(235,237,226))
     draw=ImageDraw.Draw(image)
     draw.rectangle((32,32,608,868),outline=(88,98,66),width=3)
     draw.rectangle((70,180,570,650),fill=(205,213,190))
     draw.ellipse((230,240,410,420),fill=(117,131,96))
     draw.polygon([(320,395),(170,650),(470,650)],fill=(117,131,96))
+    if scene:
+        draw.rectangle((70,180,570,650),fill=(205,213,190))
+        draw.rectangle((120,360,450,630),outline=(88,98,66),width=8)
+        draw.polygon([(100,360),(285,220),(470,360)],outline=(88,98,66),width=8)
+        draw.rectangle((250,470,330,630),outline=(88,98,66),width=6)
     draw.text((70,90),'SIMULATION / NOT AI GENERATED',fill=(40,50,30),font_size=24)
     draw.text((70,720),f'PANEL {index+1:03d}  -  REVIEW FIXTURE',fill=(40,50,30),font_size=22)
     draw.text((70,765),'Import your artwork to review real images.',fill=(40,50,30),font_size=18)

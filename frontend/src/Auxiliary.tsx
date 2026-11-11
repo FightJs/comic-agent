@@ -1,3 +1,11 @@
+import { SetupAssistant } from "./SetupAssistant";
+import { ModelCapabilities } from "./ModelCapabilities";
+import { SkillManager,hasSkillDraft } from "./SkillManager";
+import { ProjectPreferenceSettings } from "./ProjectPreferences";
+import { RuntimeCapacity } from "./RuntimeCapacity";
+import { ConfigImport } from "./ConfigImport";
+import { GraphJobs } from "./GraphDocuments";
+import { Select } from "./Select";
 import { useEffect, useState } from "react";
 import { RefreshCw, Clock3, KeyRound } from "lucide-react";
 import { api, base, json, type RecordItem } from "./api";
@@ -30,13 +38,16 @@ export function Tasks({
     failed: "失败",
     interrupted: "已中断",
     pending: "待处理回复",
+    cancelled: "已取消",
   };
   return (
     <Drawer title="任务中心" onClose={onClose}>
       <div className="notice">
-        本轮所有 AI 任务均为模拟；无真实费用、模型耗时和质量结论。
+        小说图谱、骨架/细纲和逐格文本生产已调用配置的模型；画风、资产和逐格生图及实图复查需明确授权。旧图片批注讨论仍为模拟，候选来源单独标记，需明确采用。
       </div>
-      <select
+      <GraphJobs pid={pid} />
+      <h3>创作任务</h3>
+      <Select
         aria-label="任务状态筛选"
         value={filter}
         onChange={(e) => setFilter(e.target.value)}
@@ -47,7 +58,7 @@ export function Tasks({
             {v}
           </option>
         ))}
-      </select>
+      </Select>
       <ErrorNote message={error} />
       {tasks
         .filter((t) => filter === "all" || t.status === filter)
@@ -72,7 +83,7 @@ export function Tasks({
                   )[t.payload.kind]
                 }
               </strong>
-              <Badge source="mock" />
+              <Badge source={t.source || "mock"} />
               <span className="status-text">{status[t.status]}</span>
             </div>
             <p>
@@ -101,13 +112,13 @@ export function Tasks({
         ))}
       {!tasks.length && (
         <Empty title="还没有任务">
-          在当前阶段发起模拟操作后，任务状态会显示在这里。
+          在当前阶段发起生成后，任务状态会显示在这里。
         </Empty>
       )}
     </Drawer>
   );
 }
-export function Settings({ onClose }: { onClose: () => void }) {
+export function Settings({ onClose,pid }: { onClose: () => void;pid?:string }) {
   const [value, setValue] = useState<any>({
       url: "",
       model: "",
@@ -116,10 +127,16 @@ export function Settings({ onClose }: { onClose: () => void }) {
     [secret, setSecret] = useState(""),
     [error, setError] = useState(""),
     [saved, setSaved] = useState(false),
-    [busy, setBusy] = useState(false);
+    [busy, setBusy] = useState(false),
+    [baseline,setBaseline]=useState<any>(null),[assistant,setAssistant]=useState(false),[importWorking,setImportWorking]=useState(false),[skillEpoch,setSkillEpoch]=useState(0);
+  const signature=(v:any)=>JSON.stringify([v.purpose||"text",v.url||"",v.model||"",v.api||((v.purpose===undefined||v.purpose==="text"||v.purpose==="vision")?"openai-completions":v.purpose==="image"?"openai-images":"mineru")]);
+  const dirty=Boolean(secret)||(baseline!==null&&signature(value)!==signature(baseline)),blocked=busy||importWorking||baseline===null;
+  function accept(v:any){setValue(v);setBaseline(v);}
+  async function reload(){setBusy(true);try{accept(await api("/settings?purpose="+value.purpose));setSecret("");setSaved(false);setSkillEpoch(v=>v+1);}catch(e){setError((e as Error).message);}finally{setBusy(false);}}
+  async function switchPurpose(purpose:string){setBusy(true);setSaved(false);setError("");try{accept(await api("/settings?purpose="+purpose));setSecret("");}catch(e){setError((e as Error).message);}finally{setBusy(false);}}
   useEffect(() => {
     api("/settings")
-      .then(setValue)
+      .then(accept)
       .catch((e) => setError(e.message));
   }, []);
   const save = async () => {
@@ -132,10 +149,11 @@ export function Settings({ onClose }: { onClose: () => void }) {
           url: value.url,
           model: value.model,
           purpose: value.purpose,
+          ...(value.api ? {api:value.api} : {}),
           ...(secret ? { secret } : {}),
         }),
       );
-      setValue(r);
+      accept(r);
       setSecret("");
       setSaved(true);
     } catch (e) {
@@ -146,9 +164,16 @@ export function Settings({ onClose }: { onClose: () => void }) {
   };
   return (
     <Drawer title="模型设置" onClose={onClose}>
+      <section className="setup-entry"><h3>让AI帮助配置</h3><p>提供配置包或流程包，让助手核对缺项、用途和安装方案；逐项确认后才应用。</p><button className="primary" disabled={dirty||importWorking||baseline===null} onClick={()=>setAssistant(true)}>AI 配置与流程助手</button>{dirty&&<p className="notice">手动配置尚未保存，请先保存或还原，再使用助手或应用配置包。</p>}</section>
+      <ConfigImport disabled={busy||dirty} onWorking={setImportWorking} onApplied={reload}/>
+      <RuntimeCapacity/>
+      {pid&&<details><summary>模型能力核对</summary><ModelCapabilities pid={pid} disabled={blocked||dirty}/></details>}
+      {pid&&<ProjectPreferenceSettings pid={pid}/>}
+      <details><summary>风格与流程 Skill</summary><SkillManager key={skillEpoch} pid={pid}/></details>
+      <h3>手动配置</h3>
       <div className="notice">
         <KeyRound size={16} />
-        配置可保存，连接未验证；本轮不发送模型请求。
+        文本配置用于AI助手及小说图谱。保存配置后，等待中的图谱任务会继续；单图及固定批次生图、实图检查与一轮严重剧情返修已连接模型，结果仍需人工采用和审核。
       </div>
       <ErrorNote message={error} />
       {value.vault_error && (
@@ -157,8 +182,9 @@ export function Settings({ onClose }: { onClose: () => void }) {
       <label>
         服务地址
         <input
+          disabled={blocked}
           value={value.url}
-          placeholder="https://…/v1"
+          placeholder={value.purpose === "parse" ? "https://mineru.net/api/v4" : "https://…/v1"}
           onChange={(e) => {
             setValue({ ...value, url: e.target.value });
             setSaved(false);
@@ -168,6 +194,7 @@ export function Settings({ onClose }: { onClose: () => void }) {
       <label>
         模型标识
         <input
+          disabled={blocked}
           value={value.model}
           placeholder="填写供应商实际模型标识"
           onChange={(e) => {
@@ -178,24 +205,24 @@ export function Settings({ onClose }: { onClose: () => void }) {
       </label>
       <label>
         用途
-        <select
+        <Select
+          disabled={blocked||dirty}
           value={value.purpose}
           onChange={(e) => {
-            setSecret("");
-            setSaved(false);
-            api("/settings?purpose=" + e.target.value)
-              .then(setValue)
-              .catch((e) => setError(e.message));
+            void switchPurpose(e.target.value);
           }}
         >
           <option value="text">文本理解与编排</option>
           <option value="image">生图与修改</option>
           <option value="vision">看图检查</option>
-        </select>
+          <option value="parse">PDF 解析 · MinerU</option>
+        </Select>
       </label>
+      {(value.purpose==="text"||value.purpose==="vision")&&<label>接口协议<Select disabled={blocked} value={value.api||"openai-completions"} onChange={e=>{setValue({...value,api:e.target.value});setSaved(false);}}><option value="openai-completions">OpenAI兼容 · Chat Completions</option><option value="openai-responses">OpenAI · Responses</option><option value="anthropic-messages">Anthropic · Messages</option></Select><small>按供应商实际协议选择；支持能力及真实效果须分别验证。</small></label>}
       <label>
         API 密钥
         <input
+          disabled={blocked}
           type="password"
           autoComplete="new-password"
           value={secret}
@@ -213,12 +240,14 @@ export function Settings({ onClose }: { onClose: () => void }) {
       <p className="muted">
         浏览器不会读取已保存密钥。若钥匙串不可用，会明确报错，不回退到明文文件。
       </p>
-      <button className="primary" disabled={busy} onClick={() => void save()}>
+      <button className="primary" disabled={blocked||!dirty} onClick={() => void save()}>
         {busy ? "保存中…" : "保存配置"}
       </button>
+      {dirty&&<button disabled={blocked} onClick={()=>{setValue(baseline);setSecret("");setError("");setSaved(false);}}>还原已保存配置</button>}
+      {assistant&&<SetupAssistant pid={pid} onApplied={reload} canApply={kind=>dirty?"手动配置有未保存修改，请先处理草稿。":kind==="select_skills"&&hasSkillDraft(pid)?"项目流程仍有未保存选择，请关闭助手后先保存或放弃草稿，再核对方案。":""} onClose={()=>{setAssistant(false);void reload();}}/>}
       {saved && (
         <p className="success" role="status">
-          配置已保存 · 连接未验证
+          配置已保存 · 连接未验证，实际结果见对应任务或讨论
         </p>
       )}
     </Drawer>

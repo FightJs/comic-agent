@@ -1,3 +1,8 @@
+import {DeliveryReadiness} from "./DeliveryReadiness";
+import {ImageGeneration} from "./ImageGeneration";
+import {VisionReviewButton} from "./VisionReview";
+import {sourceLabel} from "./logic";
+import { Select } from "./Select";
 import { useEffect, useState } from "react";
 import { api, base, json, recPath, downloadZip, RecordItem } from "./api";
 import { AnnotationCanvas, Annotation } from "./AnnotationCanvas";
@@ -28,6 +33,7 @@ export function Images(props: ProductionProps & { modify?: boolean }) {
     [saved, setSaved] = useState(false),
     [annotationRevision, setAnnotationRevision] = useState(0),
     [focusAnnotation, setFocusAnnotation] = useState("");
+  const [annotationEdit, setAnnotationEdit] = useState<{target:RecordItem;annotationVersion:number}|null>(null);
   const signature = heads
     .map((r) => r.id + ":" + r.version + ":" + r.adopted)
     .join(",");
@@ -155,7 +161,7 @@ export function Images(props: ProductionProps & { modify?: boolean }) {
           <button onClick={() => setHideChat(!hideChat)}>
             {hideChat ? "显示批注对话" : "专注画布"}
           </button>
-          <select
+          <Select
             aria-label="图片显示范围"
             value={scope}
             onChange={(e) => setScope(e.target.value)}
@@ -163,9 +169,10 @@ export function Images(props: ProductionProps & { modify?: boolean }) {
             <option value="batch">当前10话</option>
             <option value="episode">当前话</option>
             <option value="all">全部话</option>
-          </select>
+          </Select>
         </div>
         <div className="actions">
+          <DeliveryReadiness key={pid} pid={pid} scope={scope} episode={episode} batch={props.batch}/>
           <span>
             {selected.length
               ? `已选 ${selected.length} 张`
@@ -210,7 +217,7 @@ export function Images(props: ProductionProps & { modify?: boolean }) {
               value={query}
               onChange={(e) => setQuery(e.target.value)}
             />
-            <select
+            <Select
               aria-label="问题筛选"
               value={filter}
               onChange={(e) => setFilter(e.target.value)}
@@ -221,7 +228,7 @@ export function Images(props: ProductionProps & { modify?: boolean }) {
               <option value="major">重大问题</option>
               <option value="general">一般问题</option>
               <option value="minor">轻微问题</option>
-            </select>
+            </Select>
             <label className="select-visible">
               <input
                 type="checkbox"
@@ -273,7 +280,7 @@ export function Images(props: ProductionProps & { modify?: boolean }) {
                   {r.content.checked
                     ? (r.content.issues?.length || 0) + "条问题"
                     : "未检查"}{" "}
-                  · {r.source === "mock" ? "模拟图片" : "人工导入"}
+                  · {sourceLabel(r.source)}
                 </small>
                 {candidates(r).length > 0 && (
                   <button
@@ -295,7 +302,7 @@ export function Images(props: ProductionProps & { modify?: boolean }) {
                 <strong>
                   第{view.content.episode}话 · 第{view.content.panel}格
                 </strong>
-                <select
+                <Select
                   aria-label="查看图片版本"
                   value={view.version}
                   onChange={(e) => {
@@ -313,7 +320,7 @@ export function Images(props: ProductionProps & { modify?: boolean }) {
                       {r.version === head.adopted ? " · 当前采用" : ""}
                     </option>
                   ))}
-                </select>
+                </Select>
                 <button onClick={() => setCompare(!compare)}>
                   {compare ? "返回画布" : "新旧对比"}
                 </button>
@@ -424,6 +431,9 @@ export function Images(props: ProductionProps & { modify?: boolean }) {
                 <small>
                   {saved ? "区域批注已保存" : "区域批注读取或保存中"}
                 </small>
+                <p className="muted">按批注编辑会先固定当前底图、区域和保护要求，再核对模型与付费授权；区域文字不是硬蒙版。</p>
+                <button disabled={!saved||view.version!==head?.version||view.version!==head?.adopted||!view.content.url||!!localStorage.getItem(`comic-annotations:${view.id}:${view.version}`)} onClick={()=>setAnnotationEdit({target:view,annotationVersion:annotationRevision})}>按批注编辑图片</button>
+                {view.version!==head?.version&&<p className="muted">正式编辑仅使用当前采用的最新版本；请先返回当前版本。</p>}
               </section>
             )}
             {refs.length > 0 && (
@@ -451,6 +461,7 @@ export function Images(props: ProductionProps & { modify?: boolean }) {
           </aside>
         )}
       </div>
+      {annotationEdit&&<ImageGeneration key={`${annotationEdit.target.id}:${annotationEdit.target.version}:${annotationEdit.annotationVersion}`} pid={pid} kind="image" target={annotationEdit.target} annotationEdit={{annotationVersion:annotationEdit.annotationVersion}} records={records} refresh={props.refresh} onClose={()=>setAnnotationEdit(null)}/>}
       {candidate && (
         <CandidateReview
           record={heads.find((r) => r.id === candidate.id) || candidate}
@@ -520,6 +531,7 @@ function ImageDetails({
   return (
     <Drawer title="图片资料与问题" onClose={onClose}>
       <Badge source={record.source} />
+      <VisionReviewButton target={record} disabled={record.version!==head.version}/>
       <p>
         版本 v{record.version} · {record.content.characters || "人物未标注"} ·{" "}
         {record.content.scene || "场景未标注"}
@@ -551,11 +563,11 @@ function ImageDetails({
         人工观察
         <textarea value={text} onChange={(e) => setText(e.target.value)} />
       </label>
-      <select value={severity} onChange={(e) => setSeverity(e.target.value)}>
+      <Select aria-label="问题严重程度" value={severity} onChange={(e) => setSeverity(e.target.value)}>
         <option value="general">一般</option>
         <option value="major">重大</option>
         <option value="minor">轻微</option>
-      </select>
+      </Select>
       <button
         disabled={!text.trim() || record.version !== head.version}
         onClick={() =>

@@ -1,0 +1,2353 @@
+{
+  "format": "comic-source-decisions/v1",
+  "groups": [
+    {
+      "id": "dispatch_capacity",
+      "source_count": 39,
+      "review_scope": "逐源核关键行为、输出、hash与宿主证据；不修改inventory/运行包，不宣称逐程序等价。"
+    },
+    {
+      "id": "recovery_clock",
+      "source_count": 8,
+      "review_scope": "逐源核关键行为、输出、hash与宿主证据；不修改inventory/运行包，不宣称逐程序等价。"
+    }
+  ],
+  "files": [
+    {
+      "source": "vertical-comic-preproduction/references/async-generation.md",
+      "source_sha256": "5f39e16e2e557ef2fa72646ae14fdc2af7ddbbcbf5addad78d81385669ae53ca",
+      "group": "dispatch_capacity",
+      "disposition": "mixed",
+      "summary": "工具注入异步执行迁为Images服务与持久批次；不移植exec cell和yield回调协议。",
+      "clauses": [
+        {
+          "source_anchor": "onResult必须完成真实持久化",
+          "behavior": "真实保存后才释放生图槽，FULFILLED不代表有图，QA独立。",
+          "decision": "host_replaced",
+          "workbench_evidence": [
+            {
+              "path": "backend/image_provider.py"
+            },
+            {
+              "path": "backend/tests/test_image_postprocess.py",
+              "test": "test_vision_wait_does_not_hold_image_capacity_or_block_other_ready_generation"
+            }
+          ]
+        },
+        {
+          "source_anchor": "连续三次连接/解码服务异常",
+          "behavior": "源三次服务错误停新派发，在途继续收尾；notify/yield维持原cell。",
+          "decision": "legacy_mechanism_not_ported",
+          "workbench_evidence": [
+            {
+              "path": "backend/image_batches.py"
+            },
+            {
+              "path": "docs/superpowers/plans/2026-11-05-pi-integration.md"
+            }
+          ],
+          "remaining": "当前未知停自身重试、独立格继续；未迁三次同源熔断、分组通知及同cell续等，非自动新增需求。"
+        }
+      ],
+      "limits": [
+        "未运行旧执行器；不证明原并发Promise、原始异常stack保存或真实服务吞吐等价。"
+      ],
+      "program_equivalence_verified": false
+    },
+    {
+      "source": "vertical-comic-preproduction/references/batch-runtime.md",
+      "source_sha256": "39eef2cc271656fce1e55f3eaf66385b4aed4fcbab76b634d2732d2cbcc37ef2",
+      "group": "dispatch_capacity",
+      "disposition": "mixed",
+      "summary": "冻结资料和准确输入保留，旧每话slot lease和owner epoch不直接使用。",
+      "clauses": [
+        {
+          "source_anchor": "本批唯一快照",
+          "behavior": "运行依赖固定规则与输入，安装后更新不能替换原批次manifest。",
+          "decision": "host_replaced",
+          "workbench_evidence": [
+            {
+              "path": "backend/skills.py"
+            },
+            {
+              "path": "backend/tests/test_image_batches.py",
+              "test": "test_batch_start_checks_all_frozen_inputs_before_any_submission"
+            }
+          ]
+        },
+        {
+          "source_anchor": "RESULT_UNKNOWN继续占槽",
+          "behavior": "源未知占远端permit，重新分配必须先停止旧writer并核预留/在途。",
+          "decision": "mixed",
+          "workbench_evidence": [
+            {
+              "path": "backend/image_provider.py"
+            },
+            {
+              "path": "backend/capacity.py"
+            }
+          ],
+          "remaining": "当前未知禁止重发但释放本地HTTP槽；不等价源RESULT_UNKNOWN持续占用permit。"
+        },
+        {
+          "source_anchor": "同owner动态调整",
+          "behavior": "降低dispatch_target不能改生产范围或重置历史，升档不代表服务容量。",
+          "decision": "host_replaced",
+          "workbench_evidence": [
+            {
+              "path": "backend/tests/test_capacity.py",
+              "test": "test_text_capacity_is_fifo_shared_and_resizing_never_cancels_active_work"
+            },
+            {
+              "path": "backend/image_attempts.py"
+            }
+          ]
+        }
+      ],
+      "limits": [
+        "未建runtime_snapshot/slot_leases/control文件或旧unknown_result_resolution_v1导入；批次冻结不冒充全部旧快照语义。"
+      ],
+      "program_equivalence_verified": false
+    },
+    {
+      "source": "vertical-comic-preproduction/references/dispatch-consistency.md",
+      "source_sha256": "f0a518a4c9c28194d03a77a3f6fd067b0ca4242553e46cd506dbb368f0481170",
+      "group": "dispatch_capacity",
+      "disposition": "mixed",
+      "summary": "提交边界版本复核与不可变证据由SQLite替代；受管文件发布和读取闭包未迁。",
+      "clauses": [
+        {
+          "source_anchor": "默认关闭",
+          "behavior": "managed_immutable_dispatch_v1必须显式准入，不因文件或标记存在自动启用。",
+          "decision": "legacy_mechanism_not_ported",
+          "workbench_evidence": [
+            {
+              "path": "backend/store.py"
+            },
+            {
+              "path": "docs/superpowers/plans/2026-11-05-pi-integration.md"
+            }
+          ]
+        },
+        {
+          "source_anchor": "撤销与IN_FLIGHT登记竞争时",
+          "behavior": "撤销/停派与提交竞争保留已提交attempt，不能据撤销推定未调用。",
+          "decision": "host_replaced",
+          "workbench_evidence": [
+            {
+              "path": "backend/image_jobs.py"
+            },
+            {
+              "path": "backend/tests/test_image_batches.py",
+              "test": "test_cancel_inflight_preserves_original_return_and_never_starts_remaining_panels"
+            },
+            {
+              "path": "backend/tests/test_image_job_retries.py",
+              "test": "test_between_attempt_guards_stop_cancellation_and_input_change"
+            }
+          ]
+        },
+        {
+          "source_anchor": "阶段3B：固定读取闭包与候选绑定",
+          "behavior": "capture/replay记录路径、缺失、目录查询和候选版本，锁内完整CAS。",
+          "decision": "legacy_mechanism_not_ported",
+          "workbench_evidence": [
+            {
+              "path": "backend/store.py"
+            },
+            {
+              "path": "backend/skills.py"
+            }
+          ],
+          "remaining": "工作台冻结项目引用而非任意文件读取闭包，不宣称ABA候选头/完整read-set等价。"
+        }
+      ],
+      "limits": [
+        "没有运行managed CLI或三平台CI；不为旧受管写入者新建准入子系统。"
+      ],
+      "program_equivalence_verified": false
+    },
+    {
+      "source": "vertical-comic-preproduction/references/episode-async.md",
+      "source_sha256": "71ffbd76851e10bf7d587a9761307f24922ecca5ebceea15f7d8107456e7a9d1",
+      "group": "dispatch_capacity",
+      "disposition": "mixed",
+      "summary": "整话独立格持续执行、真实前图依赖与唯一剧情返修由当前批次承担。",
+      "clauses": [
+        {
+          "source_anchor": "generation_dependencies",
+          "behavior": "普通连续性不增加串行停点，真实前图必须采用审核后绑定准确像素。",
+          "decision": "host_replaced",
+          "workbench_evidence": [
+            {
+              "path": "backend/tests/test_image_dependencies.py",
+              "test": "test_dependency_waits_for_exact_adopted_reviewed_pixels_and_independent_panel_continues"
+            }
+          ]
+        },
+        {
+          "source_anchor": "唯一第二轮",
+          "behavior": "原失败保留，真实问题可滚动进入一次质量返修，不无限抽图。",
+          "decision": "host_replaced",
+          "workbench_evidence": [
+            {
+              "path": "backend/tests/test_image_postprocess.py",
+              "test": "test_authorized_generate_review_one_story_repair_and_recheck_keeps_both_candidates"
+            }
+          ]
+        },
+        {
+          "source_anchor": "累计超过5张实际视觉失败",
+          "behavior": "旧累计五张视觉失败先共因诊断，旧半话须批准映射导入。",
+          "decision": "legacy_mechanism_not_ported",
+          "workbench_evidence": [
+            {
+              "path": "backend/image_postprocess.py"
+            },
+            {
+              "path": "docs/superpowers/plans/2026-11-05-pi-integration.md"
+            }
+          ],
+          "remaining": "当前仅critical/story一轮授权返修；没有五张阈值诊断和H001/H002迁移，不自动扩张范围。"
+        }
+      ],
+      "limits": [
+        "源内部轻审核/D停点历史变更不直接替换工作台人工采用审核，未证明多话吞吐等价。"
+      ],
+      "program_equivalence_verified": false
+    },
+    {
+      "source": "vertical-comic-preproduction/references/incremental-pipeline.md",
+      "source_sha256": "c89d922d30b62d7ca5ba27e57474a81552f2b0c64dc469d41e4b26fced3ed862",
+      "group": "dispatch_capacity",
+      "disposition": "mixed",
+      "summary": "保留动态守卫、生成与审核分离；旧每话缓存进程、等价上下文重绑定未迁。",
+      "clauses": [
+        {
+          "source_anchor": "同一运行复用校验工作进程",
+          "behavior": "每话固定JSONL进程、有界公共事实缓存，不缓存动态许可。",
+          "decision": "legacy_mechanism_not_ported",
+          "workbench_evidence": [
+            {
+              "path": "backend/agent_runtime.py"
+            },
+            {
+              "path": "backend/image_batches.py"
+            }
+          ],
+          "remaining": "工作台服务常驻，不另建每话Python host或validation_pool。"
+        },
+        {
+          "source_anchor": "context-rebind-plan",
+          "behavior": "只对无历史PENDING首轮格证明输入等价，apply再次CAS并留不可变回执。",
+          "decision": "legacy_mechanism_not_ported",
+          "workbench_evidence": [
+            {
+              "path": "backend/image_jobs.py"
+            },
+            {
+              "path": "docs/superpowers/plans/2026-11-05-pi-integration.md"
+            }
+          ],
+          "remaining": "当前依赖绑定不是通用上下文等价证明；不提供旧context-rebind接口。"
+        },
+        {
+          "source_anchor": "真实看图耗时",
+          "behavior": "无实际观测保持未知，保存到QA登记的间隔不冒充审图时间。",
+          "decision": "semantic_retained",
+          "workbench_evidence": [
+            {
+              "path": "backend/image_batch_control.py"
+            },
+            {
+              "path": "backend/image_provider.py"
+            }
+          ]
+        }
+      ],
+      "limits": [
+        "没有旧跨操作缓存/吞吐预测的逐项实现，局部基准不证明整批四小时完成。"
+      ],
+      "program_equivalence_verified": false
+    },
+    {
+      "source": "vertical-comic-preproduction/references/runtime-efficiency.md",
+      "source_sha256": "5786fba33559444e3a687b931414476b1b482178a45ca025141012e5b9a5e074",
+      "group": "dispatch_capacity",
+      "disposition": "mixed",
+      "summary": "准确受影响范围校验与禁止未知重发保留；旧性能探针、读取缓存指标不迁。",
+      "clauses": [
+        {
+          "source_anchor": "普通剧情顺序",
+          "behavior": "普通剧情/服装连续性不是额外实图依赖，真实保存后QA独立排队。",
+          "decision": "host_replaced",
+          "workbench_evidence": [
+            {
+              "path": "backend/image_dependencies.py"
+            },
+            {
+              "path": "backend/tests/test_image_postprocess.py",
+              "test": "test_vision_wait_does_not_hold_image_capacity_or_block_other_ready_generation"
+            }
+          ]
+        },
+        {
+          "source_anchor": "read_dependencies_v2",
+          "behavior": "负查询、目录成员和路径目标参与读取事务，失效不能旧预检放行。",
+          "decision": "legacy_mechanism_not_ported",
+          "workbench_evidence": [
+            {
+              "path": "backend/image_jobs.py"
+            },
+            {
+              "path": "backend/store.py"
+            }
+          ],
+          "remaining": "当前复核项目记录与引用hash，不是旧任意文件读取事务闭包。"
+        },
+        {
+          "source_anchor": "historical_ready_to_reserve_seconds",
+          "behavior": "源就绪观测不回填历史，CLI合成基准不外推服务速度。",
+          "decision": "semantic_retained",
+          "workbench_evidence": [
+            {
+              "path": "backend/image_batch_control.py"
+            },
+            {
+              "path": "docs/superpowers/plans/2026-11-05-pi-integration.md"
+            }
+          ]
+        }
+      ],
+      "limits": [
+        "未迁旧dispatch_cli_probe、ready_wait与锁计时报告；不能承诺旧优化倍数。"
+      ],
+      "program_equivalence_verified": false
+    },
+    {
+      "source": "vertical-comic-preproduction/references/staged-workflow.md",
+      "source_sha256": "2ccfa4e486eb115efef9162d5884a187c8ee73b7bb38b0ae392c56205580cf89",
+      "group": "dispatch_capacity",
+      "disposition": "mixed",
+      "summary": "准确版本、明确批准、候选与实际调用分开；旧阶段文件合同不直接注册。",
+      "clauses": [
+        {
+          "source_anchor": "取消不自动恢复",
+          "behavior": "冻结实际输入，真实失败/取消/返回历史保留，恢复不默认重新提交。",
+          "decision": "host_replaced",
+          "workbench_evidence": [
+            {
+              "path": "backend/image_jobs.py"
+            },
+            {
+              "path": "backend/tests/test_image_batches.py",
+              "test": "test_cancel_inflight_preserves_original_return_and_never_starts_remaining_panels"
+            },
+            {
+              "path": "backend/image_attempts.py"
+            }
+          ]
+        },
+        {
+          "source_anchor": "generation_dependencies",
+          "behavior": "真正QA通过前图才满足依赖，程序PASS不代替用户批准。",
+          "decision": "host_replaced",
+          "workbench_evidence": [
+            {
+              "path": "backend/tests/test_image_dependencies.py",
+              "test": "test_dependency_waits_for_exact_adopted_reviewed_pixels_and_independent_panel_continues"
+            }
+          ]
+        },
+        {
+          "source_anchor": "批准记录必须",
+          "behavior": "旧APPROVED/user_message/quote、A/B/C/D和EPISODE文件格式须精确证明。",
+          "decision": "legacy_mechanism_not_ported",
+          "workbench_evidence": [
+            {
+              "path": "backend/store.py"
+            },
+            {
+              "path": "docs/superpowers/plans/2026-11-05-pi-integration.md"
+            }
+          ],
+          "remaining": "工作台使用采用/审核指针和明确启动授权，不合成旧用户消息文件。"
+        }
+      ],
+      "limits": [
+        "不因源新旧D停点描述改变当前产品审核规则；不新增旧半话流程。"
+      ],
+      "program_equivalence_verified": false
+    },
+    {
+      "source": "vertical-comic-preproduction/references/submission-runtime.md",
+      "source_sha256": "110dcb8267d7ee54d163ee83fa1efbd518b08cc83ebc555f8180187fd03a4986",
+      "group": "dispatch_capacity",
+      "disposition": "mixed",
+      "summary": "准确提交登记和一次调用语义由call/attempt账本替代；旧工具桥及自适应机器准入不迁。",
+      "clauses": [
+        {
+          "source_anchor": "prepared_dispatch_v1",
+          "behavior": "准备引用与动态领取分开，仅首次新鲜登记允许实际调用。",
+          "decision": "host_replaced",
+          "workbench_evidence": [
+            {
+              "path": "backend/image_provider.py"
+            },
+            {
+              "path": "backend/image_jobs.py"
+            },
+            {
+              "path": "backend/image_attempts.py"
+            }
+          ]
+        },
+        {
+          "source_anchor": "全机自适应并发",
+          "behavior": "compile/image/host机器资源动态准入不能当服务渲染通道。",
+          "decision": "legacy_mechanism_not_ported",
+          "workbench_evidence": [
+            {
+              "path": "backend/capacity.py"
+            },
+            {
+              "path": "docs/superpowers/plans/2026-11-05-pi-integration.md"
+            }
+          ],
+          "remaining": "当前用户可配置用途并发，不迁CPU/RAM/磁盘探针或工具通道探测。"
+        },
+        {
+          "source_anchor": "网络错误最多重试四次",
+          "behavior": "确认无图网络技术恢复有固定上限，不增加质量轮次。",
+          "decision": "host_replaced",
+          "workbench_evidence": [
+            {
+              "path": "backend/tests/test_image_job_retries.py",
+              "test": "test_authorized_not_sent_retry_is_orchestrated_without_extra_logical_call"
+            },
+            {
+              "path": "docs/pi-technical-retry-ui-review.md"
+            }
+          ]
+        }
+      ],
+      "limits": [
+        "未运行源generation_host/工具注入；参考限制按当前供应商和宿主规则，不宣称旧五路径工具合同等价。"
+      ],
+      "program_equivalence_verified": false
+    },
+    {
+      "source": "vertical-comic-preproduction/references/worker-watchdog.md",
+      "source_sha256": "85fca0bea77cbfdfbbdd555da41beea55eba8cd832e5186006a9fd3bace4d0a3",
+      "group": "dispatch_capacity",
+      "disposition": "mixed",
+      "summary": "长请求不代表失败、停新派发仍保存在途语义保留；T1/T2和owner接管未迁。",
+      "clauses": [
+        {
+          "source_anchor": "阈值按",
+          "behavior": "按无真实进展时间而非阶段总耗时报警，人工待审不催促。",
+          "decision": "legacy_mechanism_not_ported",
+          "workbench_evidence": [
+            {
+              "path": "backend/image_batch_control.py"
+            },
+            {
+              "path": "docs/superpowers/plans/2026-11-05-pi-integration.md"
+            }
+          ],
+          "remaining": "未迁5/12分钟及15/30分钟告警、进展账本去重或换owner。"
+        },
+        {
+          "source_anchor": "原Promise和保存回调继续",
+          "behavior": "慢请求不释放未知许可、不取消原Promise或重复提交。",
+          "decision": "host_replaced",
+          "workbench_evidence": [
+            {
+              "path": "backend/image_provider.py"
+            },
+            {
+              "path": "backend/tests/test_image_batches.py",
+              "test": "test_cancel_inflight_preserves_original_return_and_never_starts_remaining_panels"
+            }
+          ]
+        },
+        {
+          "source_anchor": "executor_lifecycle",
+          "behavior": "真实终止事件只对账原返回；消息/找不到cell不证明执行恢复。",
+          "decision": "mixed",
+          "workbench_evidence": [
+            {
+              "path": "backend/tests/test_tool_recovery_e2e.py",
+              "test": "test_actual_host_saved_then_node_killed_recovery_never_replays_tool"
+            },
+            {
+              "path": "backend/recovery_service.py"
+            }
+          ],
+          "remaining": "已有受限保存工具回执显式恢复，不提供通用旧executor生命周期或替代启动API。"
+        }
+      ],
+      "limits": [
+        "不新增监控agent或离线唤醒；不能把已提供恢复入口写成完全缺失。"
+      ],
+      "program_equivalence_verified": false
+    },
+    {
+      "source": "vertical-comic-preproduction/scripts/async_generation.js",
+      "source_sha256": "7af9e51c8e0006e12ffe7b89ee4f52a344314f5bac2c820bcfd529edaf6ea2fa",
+      "group": "dispatch_capacity",
+      "disposition": "mixed",
+      "summary": "runHalfWave的调用/保存/通知分离由服务替代，原工具闭包和回调未运行。",
+      "clauses": [
+        {
+          "source_anchor": "onPrepareInvoke required",
+          "behavior": "prepared模式必须宿主最终job与新鲜登记回执，候选不能调用。",
+          "decision": "host_replaced",
+          "workbench_evidence": [
+            {
+              "path": "backend/image_jobs.py"
+            },
+            {
+              "path": "backend/image_provider.py"
+            },
+            {
+              "path": "backend/image_attempts.py"
+            }
+          ]
+        },
+        {
+          "source_anchor": "maxConsecutiveServiceErrors",
+          "behavior": "源默认三次连续服务异常停派、在途收尾、显示不代表QA。",
+          "decision": "mixed",
+          "workbench_evidence": [
+            {
+              "path": "backend/tests/test_image_batches.py",
+              "test": "test_unknown_panel_is_not_reposted_and_independent_remaining_panel_continues"
+            },
+            {
+              "path": "backend/image_postprocess.py"
+            }
+          ],
+          "remaining": "当前unknown禁止重发、独立格继续；三次熔断、分组通知及同cell控制不移植。"
+        }
+      ],
+      "limits": [
+        "不证明原所有options、乱序Promise、保存单写或服务吞吐逐程序等价。"
+      ],
+      "program_equivalence_verified": false
+    },
+    {
+      "source": "vertical-comic-preproduction/scripts/audit_cache.py",
+      "source_sha256": "351c0bda5bf06567d47acabff719bd2b8c3cdc3c3b9cd329b5bc395957fa3971",
+      "group": "dispatch_capacity",
+      "disposition": "legacy_mechanism_not_ported",
+      "summary": "事务内递归只读派生缓存未迁，不用缓存命中授予批准。",
+      "clauses": [
+        {
+          "source_anchor": "def freeze(value):",
+          "behavior": "ReadOnlyDict/List递归拒绝改写，deepcopy产生独立可变副本。",
+          "decision": "legacy_mechanism_not_ported",
+          "workbench_evidence": [
+            {
+              "path": "backend/store.py"
+            }
+          ]
+        },
+        {
+          "source_anchor": "def derived(",
+          "behavior": "按完整内容、namespace/options及传递依赖复核才命中，退出传播读取依赖。",
+          "decision": "legacy_mechanism_not_ported",
+          "workbench_evidence": [
+            {
+              "path": "backend/image_jobs.py"
+            },
+            {
+              "path": "backend/skills.py"
+            }
+          ],
+          "remaining": "当前没有旧_FILE_SESSION缓存；固定记录与守卫不冒充该性能实现。"
+        }
+      ],
+      "limits": [
+        "不为旧校验缓存另建执行器，不宣称负查询失效和性能等价。"
+      ],
+      "program_equivalence_verified": false
+    },
+    {
+      "source": "vertical-comic-preproduction/scripts/audit_process.py",
+      "source_sha256": "044bdecb5ee2679bf11aa6df03a86540aaf3b05df316721332f5f727459e0ba8",
+      "group": "dispatch_capacity",
+      "disposition": "legacy_mechanism_not_ported",
+      "summary": "冻结只读checker子进程和双日志管道不作为工作台通用执行入口。",
+      "clauses": [
+        {
+          "source_anchor": "def run(argv,",
+          "behavior": "stdout写独立文件、线程持续排stderr，按剩余任务预算缩timeout并保留局部输出。",
+          "decision": "legacy_mechanism_not_ported",
+          "workbench_evidence": [
+            {
+              "path": "backend/agent_runtime.py"
+            },
+            {
+              "path": "docs/superpowers/plans/2026-11-05-pi-integration.md"
+            }
+          ]
+        },
+        {
+          "source_anchor": "def last_progress(stderr):",
+          "behavior": "倒序提取audit_progress_v1事件，仅显示观测不修改判定。",
+          "decision": "legacy_mechanism_not_ported",
+          "workbench_evidence": [
+            {
+              "path": "frontend/src/ImageBatches.tsx"
+            }
+          ],
+          "remaining": "当前任务状态显示不是旧stderr心跳解析器；不新增任意argv执行。"
+        }
+      ],
+      "limits": [
+        "现有Pi进程不是该审计器；没有其stderr耐久/timeout合同的等价验收。"
+      ],
+      "program_equivalence_verified": false
+    },
+    {
+      "source": "vertical-comic-preproduction/scripts/audit_progress.py",
+      "source_sha256": "0f7701a1334546e603c25534954aa5c19141e5e12084a433283160381c7541cf",
+      "group": "dispatch_capacity",
+      "disposition": "legacy_mechanism_not_ported",
+      "summary": "旧checker线程心跳与ContextVar标记不迁，进度不等于批准原则保留。",
+      "clauses": [
+        {
+          "source_anchor": "class Progress:",
+          "behavior": "stderr周期输出stage/panel/elapsed/cpu，显示流故障不能改变门禁。",
+          "decision": "legacy_mechanism_not_ported",
+          "workbench_evidence": [
+            {
+              "path": "frontend/src/ImageBatches.tsx"
+            }
+          ]
+        },
+        {
+          "source_anchor": "FINISHED_NOT_AUTHORIZATION",
+          "behavior": "成功结束只是checker完成，不是用户批准、QA或图像完成。",
+          "decision": "semantic_retained",
+          "workbench_evidence": [
+            {
+              "path": "backend/image_jobs.py"
+            },
+            {
+              "path": "backend/image_postprocess.py"
+            }
+          ]
+        }
+      ],
+      "limits": [
+        "当前页面无相同10秒CPU心跳接口，不用任务completed冒充视觉通过。"
+      ],
+      "program_equivalence_verified": false
+    },
+    {
+      "source": "vertical-comic-preproduction/scripts/batch_bootstrap.js",
+      "source_sha256": "ef0007858dc342f331d0917871470cfafaf512f645c32c53cd007fb379c566da",
+      "group": "dispatch_capacity",
+      "disposition": "mixed",
+      "summary": "旧Node工具宿主启动/复用与eval源码不迁，服务固定批次替代关键调用边界。",
+      "clauses": [
+        {
+          "source_anchor": "STATE_OWNER_ALREADY_EXISTS",
+          "behavior": "按manifest/state避免双owner，旧子进程确退后才能重建。",
+          "decision": "mixed",
+          "workbench_evidence": [
+            {
+              "path": "backend/image_batches.py"
+            },
+            {
+              "path": "backend/image_provider.py"
+            }
+          ],
+          "remaining": "当前服务账本防重复派发，不提供旧relayKey/工具宿主owner接管。"
+        },
+        {
+          "source_anchor": "replayed_exchanges",
+          "behavior": "稳定ID允许重试relay运输/分块保存而非重复图像调用，找回capture先登记。",
+          "decision": "host_replaced",
+          "workbench_evidence": [
+            {
+              "path": "backend/image_attempts.py"
+            },
+            {
+              "path": "backend/tests/test_tool_recovery_e2e.py",
+              "test": "test_actual_host_saved_then_node_killed_recovery_never_replays_tool"
+            }
+          ]
+        },
+        {
+          "source_anchor": "HOSTS_RETAINED",
+          "behavior": "未完成保留host供审图续跑，完成关闭并可调用lean_delivery。",
+          "decision": "legacy_mechanism_not_ported",
+          "workbench_evidence": [
+            {
+              "path": "docs/superpowers/plans/2026-11-05-pi-integration.md"
+            }
+          ],
+          "remaining": "不迁旧每话进程生命周期和极简ZIP完成器。"
+        }
+      ],
+      "limits": [
+        "工作台不是旧MCP回包传输层，未证明分块/ACK/并发性能等价。"
+      ],
+      "program_equivalence_verified": false
+    },
+    {
+      "source": "vertical-comic-preproduction/scripts/batch_host_client.js",
+      "source_sha256": "cf396aadb777da3b01128e4ca2c9f2ffa5d9b55b5e7cccddb951171960557ceb",
+      "group": "dispatch_capacity",
+      "disposition": "mixed",
+      "summary": "每话JSONL子进程和资源broker不迁，实际返回先保全与单写原则由宿主替代。",
+      "clauses": [
+        {
+          "source_anchor": "DUPLICATE_STATE_OWNER",
+          "behavior": "每state唯一child，有限captureCapacity与request_id路由，只有空闲无pin才退休。",
+          "decision": "legacy_mechanism_not_ported",
+          "workbench_evidence": [
+            {
+              "path": "backend/image_batches.py"
+            },
+            {
+              "path": "backend/capacity.py"
+            }
+          ],
+          "remaining": "没有每话解释器或资源broker，不声称pin/retire和capture背压等价。"
+        },
+        {
+          "source_anchor": "RETURN_CAPTURED",
+          "behavior": "capture成功结算资源并记录真实完成，失联不能重调图像。",
+          "decision": "host_replaced",
+          "workbench_evidence": [
+            {
+              "path": "backend/image_provider.py"
+            },
+            {
+              "path": "backend/tests/test_tool_recovery_e2e.py",
+              "test": "test_actual_host_saved_then_node_killed_recovery_never_replays_tool"
+            }
+          ]
+        }
+      ],
+      "limits": [
+        "用途容量不是旧host/capture内存额度或跨Agent机器准入。"
+      ],
+      "program_equivalence_verified": false
+    },
+    {
+      "source": "vertical-comic-preproduction/scripts/batch_relay.js",
+      "source_sha256": "4cc7dc97ddd4795abe032e3ecc3d7087983b384eddddba329143f514292db6e3",
+      "group": "dispatch_capacity",
+      "disposition": "mixed",
+      "summary": "文件分块relay及ACK墓碑不迁，稳定编号与已保存结果恢复由账本替代。",
+      "clauses": [
+        {
+          "source_anchor": "async function exchange(",
+          "behavior": "按id/refHash去重，ACK留墓碑防重放，同ID换payload拒绝。",
+          "decision": "host_replaced",
+          "workbench_evidence": [
+            {
+              "path": "backend/image_provider.py"
+            },
+            {
+              "path": "backend/image_attempts.py"
+            }
+          ]
+        },
+        {
+          "source_anchor": "recoverable.push",
+          "behavior": "只找回合法capture-envelope/capture-return，残缺JSON保留证据不猜图像结果。",
+          "decision": "mixed",
+          "workbench_evidence": [
+            {
+              "path": "backend/tests/test_tool_recovery_e2e.py",
+              "test": "test_actual_host_saved_then_node_killed_recovery_never_replays_tool"
+            },
+            {
+              "path": "backend/image_provider.py"
+            }
+          ],
+          "remaining": "当前恢复本服务原响应/已保存工具结果，不扫描旧relay临时目录或part文件。"
+        }
+      ],
+      "limits": [
+        "没有旧48KB分块运输合同的等价保证，不从运输重试推导生图重试。"
+      ],
+      "program_equivalence_verified": false
+    },
+    {
+      "source": "vertical-comic-preproduction/scripts/batch_runner.js",
+      "source_sha256": "27537e10c9e29f73704ee01bde75655f6e1ead9ac59ff25b085a2f297b032b25",
+      "group": "dispatch_capacity",
+      "disposition": "mixed",
+      "summary": "多话泵与准备队列不照搬，批次/依赖/检查服务替代主要业务语义。",
+      "clauses": [
+        {
+          "source_anchor": "function scheduling(",
+          "behavior": "源报告ready_jobs、机器/manifest额度、DEPENDENCY/REVIEW等阻塞原因。",
+          "decision": "mixed",
+          "workbench_evidence": [
+            {
+              "path": "frontend/src/ImageBatches.tsx"
+            },
+            {
+              "path": "backend/capacity.py"
+            }
+          ],
+          "remaining": "已有任务/依赖/用途容量UI，没有源同字段全机调度报告或tool_capacity实测。"
+        },
+        {
+          "source_anchor": "function enqueueRetry(job)",
+          "behavior": "仅宿主NO_IMAGE_RETRY_READY后重新准备同格，不因普通异常重试。",
+          "decision": "host_replaced",
+          "workbench_evidence": [
+            {
+              "path": "backend/tests/test_image_job_retries.py",
+              "test": "test_authorized_not_sent_retry_is_orchestrated_without_extra_logical_call"
+            },
+            {
+              "path": "docs/pi-technical-retry-ui-review.md"
+            }
+          ]
+        },
+        {
+          "source_anchor": "MATERIALS_READY",
+          "behavior": "所有材料就绪才finalize，否则CONTINUE_REQUIRED；已保存结果不反复携带base64。",
+          "decision": "mixed",
+          "workbench_evidence": [
+            {
+              "path": "backend/image_provider.py"
+            },
+            {
+              "path": "backend/image_batches.py"
+            }
+          ],
+          "remaining": "当前批次completed与候选采用分开，不等于旧ZIP交付完成或用户收到。"
+        }
+      ],
+      "limits": [
+        "当前生成主循环不等价源多话并发泵和按机器余量延迟激活，不能声称吞吐相同。"
+      ],
+      "program_equivalence_verified": false
+    },
+    {
+      "source": "vertical-comic-preproduction/scripts/control_updates.py",
+      "source_sha256": "e87ad9025ba3333cdaed9125e05d6627442621962648b8ffbd56e8726da9d1ac",
+      "group": "dispatch_capacity",
+      "disposition": "host_replaced",
+      "summary": "受限cancel/dispatch_pause的CAS由宿主事务状态机替代。",
+      "clauses": [
+        {
+          "source_anchor": "def update(",
+          "behavior": "只改cancelled/holds及jobs的dispatch_pause/holds，核完整control与所有owner状态hash。",
+          "decision": "host_replaced",
+          "workbench_evidence": [
+            {
+              "path": "backend/image_batch_control.py"
+            },
+            {
+              "path": "backend/image_jobs.py"
+            }
+          ]
+        },
+        {
+          "source_anchor": "cancellation cannot be silently resumed",
+          "behavior": "取消不可静默恢复，暂停须明确恢复；不能顺带改owner、容量或预算。",
+          "decision": "host_replaced",
+          "workbench_evidence": [
+            {
+              "path": "backend/tests/test_image_batches.py",
+              "test": "test_cancel_inflight_preserves_original_return_and_never_starts_remaining_panels"
+            },
+            {
+              "path": "backend/tests/test_image_batch_control.py",
+              "test": "test_waiting_for_user_does_not_reset_or_advance_effective_time"
+            }
+          ]
+        }
+      ],
+      "limits": [
+        "不支持旧任意holds字典或跨话control文件，SQLite事务不同于原多文件排序锁。"
+      ],
+      "program_equivalence_verified": false
+    },
+    {
+      "source": "vertical-comic-preproduction/scripts/episode_dispatch_queue.py",
+      "source_sha256": "c0840c3f33945ceffeb1409d7f7cf7d9c4c2028905aa76812db07721b65ebebf",
+      "group": "dispatch_capacity",
+      "disposition": "mixed",
+      "summary": "真实容量及准确授权预检由派发守卫替代，旧RESERVED派发副本不创建。",
+      "clauses": [
+        {
+          "source_anchor": "def _prepare(",
+          "behavior": "核state/control/owner/范围与free slots，reservation_batch挑准确就绪格；满额零调用。",
+          "decision": "host_replaced",
+          "workbench_evidence": [
+            {
+              "path": "backend/capacity.py"
+            },
+            {
+              "path": "backend/tests/test_image_batches.py",
+              "test": "test_batch_start_checks_all_frozen_inputs_before_any_submission"
+            },
+            {
+              "path": "backend/tests/test_image_dependencies.py",
+              "test": "test_dependency_waits_for_exact_adopted_reviewed_pixels_and_independent_panel_continues"
+            }
+          ]
+        },
+        {
+          "source_anchor": "def _commit(",
+          "behavior": "按旧lease或共享permit方案落RESERVED并输出image_calls=0/dispatch_metrics。",
+          "decision": "legacy_mechanism_not_ported",
+          "workbench_evidence": [
+            {
+              "path": "backend/image_attempts.py"
+            },
+            {
+              "path": "docs/superpowers/plans/2026-11-05-pi-integration.md"
+            }
+          ],
+          "remaining": "当前原子claim attempt后单POST，不迁两文件CAS、包复制及ready_wait指标。"
+        }
+      ],
+      "limits": [
+        "源仅领取不生图；不把当前claim称为原状态/指标全集等价。"
+      ],
+      "program_equivalence_verified": false
+    },
+    {
+      "source": "vertical-comic-preproduction/scripts/generation_host.py",
+      "source_sha256": "fb9f396bfe4b876ede4a53319da8da32a792b28a6424de301b214c31d72dbd26",
+      "group": "dispatch_capacity",
+      "disposition": "mixed",
+      "summary": "返回capture/登记/恢复由服务API替代，旧每话固定工具serve命令全集不启用。",
+      "clauses": [
+        {
+          "source_anchor": "def capture_return(",
+          "behavior": "独立耐久I/O先保存原返回及准确job，登记可晚恢复，不能标QA通过。",
+          "decision": "host_replaced",
+          "workbench_evidence": [
+            {
+              "path": "backend/image_provider.py"
+            },
+            {
+              "path": "backend/image_postprocess.py"
+            }
+          ]
+        },
+        {
+          "source_anchor": "def recover_returns(",
+          "behavior": "只重新登记已保存原件，局部失败保留，image_calls=0。",
+          "decision": "host_replaced",
+          "workbench_evidence": [
+            {
+              "path": "backend/tests/test_tool_recovery_e2e.py",
+              "test": "test_actual_host_saved_then_node_killed_recovery_never_replays_tool"
+            },
+            {
+              "path": "backend/image_provider.py"
+            }
+          ]
+        },
+        {
+          "source_anchor": "def serve(",
+          "behavior": "固定WorkflowSession、受限capture/准备池与JSONL关联请求复用。",
+          "decision": "legacy_mechanism_not_ported",
+          "workbench_evidence": [
+            {
+              "path": "backend/agent_runtime.py"
+            },
+            {
+              "path": "docs/superpowers/plans/2026-11-05-pi-integration.md"
+            }
+          ],
+          "remaining": "工作台/Pi进程不是源每话缓存、资源池和任意action集合。"
+        }
+      ],
+      "limits": [
+        "不导入旧raw-return目录为当前回执，真实供应商耐久/成本仍待实测。"
+      ],
+      "program_equivalence_verified": false
+    },
+    {
+      "source": "vertical-comic-preproduction/scripts/image_tool_bridge.js",
+      "source_sha256": "097774208af8a37ea535e73e29b378d10436a3f028023986c6047c93a9d6190d",
+      "group": "dispatch_capacity",
+      "disposition": "mixed",
+      "summary": "真实工具通道桥改为明确Images HTTP供应商适配，保持登记、原返回、审核分离。",
+      "clauses": [
+        {
+          "source_anchor": "BRIDGE_ACTUAL_CHANNELS_REQUIRED",
+          "behavior": "真实通道限定本地Promise，并通过宿主机器资源与一次调用登记。",
+          "decision": "mixed",
+          "workbench_evidence": [
+            {
+              "path": "backend/image_provider.py"
+            },
+            {
+              "path": "backend/capacity.py"
+            }
+          ],
+          "remaining": "当前HTTP用途槽不检测旧工具channels或机器permit。"
+        },
+        {
+          "source_anchor": "BRIDGE_DURABLE_CAPTURE_RECEIPT_REQUIRED",
+          "behavior": "先capture耐久保存原packet，登记单独排队，失败保留原返回不能重发。",
+          "decision": "host_replaced",
+          "workbench_evidence": [
+            {
+              "path": "backend/image_provider.py"
+            },
+            {
+              "path": "backend/tests/test_tool_recovery_e2e.py",
+              "test": "test_actual_host_saved_then_node_killed_recovery_never_replays_tool"
+            }
+          ]
+        },
+        {
+          "source_anchor": "confirmed_no_output",
+          "behavior": "只有宿主FAILURE_RECORDED确认无图，普通异常或慢请求不重试。",
+          "decision": "host_replaced",
+          "workbench_evidence": [
+            {
+              "path": "backend/tests/test_image_job_retries.py",
+              "test": "test_authorized_not_sent_retry_is_orchestrated_without_extra_logical_call"
+            }
+          ]
+        }
+      ],
+      "limits": [
+        "未迁packet/envelope、native_started_at或工具call locator，不提供任意工具桥执行。"
+      ],
+      "program_equivalence_verified": false
+    },
+    {
+      "source": "vertical-comic-preproduction/scripts/machine_resources.py",
+      "source_sha256": "98a88eed4b872b2b2c2131ba7898380908c65d15b77975e6add0f3c9b961fa81",
+      "group": "dispatch_capacity",
+      "disposition": "mixed",
+      "summary": "机器自适应资源准入未迁，工作台使用用户可调用途容量而非探测服务能力。",
+      "clauses": [
+        {
+          "source_anchor": "def sample_system(",
+          "behavior": "探测CPU/内存/磁盘与boot、进程出生身份，共享本机资源home。",
+          "decision": "legacy_mechanism_not_ported",
+          "workbench_evidence": [
+            {
+              "path": "backend/capacity.py"
+            },
+            {
+              "path": "docs/superpowers/plans/2026-11-05-pi-integration.md"
+            }
+          ],
+          "remaining": "不新增系统探针、磁盘清理或跨Agent broker。"
+        },
+        {
+          "source_anchor": "def acquire(self,kind,key,",
+          "behavior": "compile/image/host按owner_key幂等令牌、公平等待并受压力/积压约束。",
+          "decision": "mixed",
+          "workbench_evidence": [
+            {
+              "path": "backend/tests/test_capacity.py",
+              "test": "test_text_capacity_is_fifo_shared_and_resizing_never_cancels_active_work"
+            }
+          ],
+          "remaining": "当前FIFO用途槽有界，但不等价待保存字节、host额度和跨进程资源协调。"
+        },
+        {
+          "source_anchor": "def resource_failure(",
+          "behavior": "资源失败降档并冷却，不赋予图像生产授权。",
+          "decision": "legacy_mechanism_not_ported",
+          "workbench_evidence": [
+            {
+              "path": "docs/superpowers/plans/2026-11-05-pi-integration.md"
+            }
+          ],
+          "remaining": "当前没有自动升降档算法；公开容量不是实测渲染能力。"
+        }
+      ],
+      "limits": [
+        "未运行源系统探针，现有容量是单应用而非全机器资源预算。"
+      ],
+      "program_equivalence_verified": false
+    },
+    {
+      "source": "vertical-comic-preproduction/scripts/managed_dispatch.py",
+      "source_sha256": "f2a8fa38b608b31400d6b22ec0e3aaf438530ae34b6b0b68e1d43e9526cadd41",
+      "group": "dispatch_capacity",
+      "disposition": "mixed",
+      "summary": "显式不可变输入准入和文件发布不迁，关键幂等与保存恢复由宿主替代。",
+      "clauses": [
+        {
+          "source_anchor": "def admit(",
+          "behavior": "旧writer已停、无在途/未知、工具固定且剩余范围准备完整才准入。",
+          "decision": "legacy_mechanism_not_ported",
+          "workbench_evidence": [
+            {
+              "path": "backend/store.py"
+            },
+            {
+              "path": "docs/superpowers/plans/2026-11-05-pi-integration.md"
+            }
+          ]
+        },
+        {
+          "source_anchor": "def reserve(",
+          "behavior": "稳定request_id，预检冲突最多显式重核0–2次，不重发生图。",
+          "decision": "mixed",
+          "workbench_evidence": [
+            {
+              "path": "backend/image_attempts.py"
+            },
+            {
+              "path": "backend/image_jobs.py"
+            }
+          ],
+          "remaining": "当前唯一attempt与hash守卫替代提交去重；源预检重核不是0–4网络重试授权。"
+        },
+        {
+          "source_anchor": "def recover_saved(",
+          "behavior": "原saved_intents准确重放登记，不改锁定执行输入，不调用图像。",
+          "decision": "host_replaced",
+          "workbench_evidence": [
+            {
+              "path": "backend/image_provider.py"
+            },
+            {
+              "path": "backend/tests/test_tool_recovery_e2e.py",
+              "test": "test_actual_host_saved_then_node_killed_recovery_never_replays_tool"
+            }
+          ]
+        }
+      ],
+      "limits": [
+        "无旧admission_id、exclusive_evidence硬链接发布或coordinator接管，不自动迁旧owner。"
+      ],
+      "program_equivalence_verified": false
+    },
+    {
+      "source": "vertical-comic-preproduction/scripts/parallel_dispatch.py",
+      "source_sha256": "86539383453fcc5f1afbae69a10b473660fe21aa90db1ede33709f1f10c9addb",
+      "group": "dispatch_capacity",
+      "disposition": "mixed",
+      "summary": "book/episode/owner/epoch/permit关口用项目范围及调用账本替代；旧owner换手不迁。",
+      "clauses": [
+        {
+          "source_anchor": "def context_errors(",
+          "behavior": "核冻结共享输入、owner/epoch、容量及同话同格同轮唯一活动permit。",
+          "decision": "host_replaced",
+          "workbench_evidence": [
+            {
+              "path": "backend/image_jobs.py"
+            },
+            {
+              "path": "backend/capacity.py"
+            },
+            {
+              "path": "backend/image_attempts.py"
+            }
+          ]
+        },
+        {
+          "source_anchor": "def handoff_readiness(",
+          "behavior": "换owner须原writer确停、无RESERVED/IN_FLIGHT/RESULT_UNKNOWN。",
+          "decision": "legacy_mechanism_not_ported",
+          "workbench_evidence": [
+            {
+              "path": "docs/superpowers/plans/2026-11-05-pi-integration.md"
+            }
+          ],
+          "remaining": "应用重启保留unknown，不通过换owner或epoch绕开原请求。"
+        },
+        {
+          "source_anchor": "def receipt_errors(",
+          "behavior": "原permit绑定返回hash，旧epoch采用须准确carry_forward证明。",
+          "decision": "mixed",
+          "workbench_evidence": [
+            {
+              "path": "backend/image_provider.py"
+            },
+            {
+              "path": "backend/image_dependencies.py"
+            }
+          ],
+          "remaining": "现有call/input_hash与文件hash绑定，但没有跨epoch carry_forward导入。"
+        }
+      ],
+      "limits": [
+        "项目隔离并非旧多话control存储协议，不直接导入其owner数据。"
+      ],
+      "program_equivalence_verified": false
+    },
+    {
+      "source": "vertical-comic-preproduction/scripts/platform_io.py",
+      "source_sha256": "552a353e7667a0c8755505490eb3fe4f186053d63506ed80f82758b48db3d464",
+      "group": "dispatch_capacity",
+      "disposition": "mixed",
+      "summary": "原子耐久写目的保留；旧跨平台sidecar锁和文件命名器不整套迁入。",
+      "clauses": [
+        {
+          "source_anchor": "def file_lock(",
+          "behavior": "Unix flock/Windows字节锁有界等待，sidecar不能删以免分裂owner。",
+          "decision": "legacy_mechanism_not_ported",
+          "workbench_evidence": [
+            {
+              "path": "backend/store.py"
+            }
+          ],
+          "remaining": "工作台用SQLite事务，不接管旧锁。"
+        },
+        {
+          "source_anchor": "def atomic_json(",
+          "behavior": "临时写flush/fsync再replace，只允许文件操作有限重试。",
+          "decision": "host_replaced",
+          "workbench_evidence": [
+            {
+              "path": "backend/image_provider.py"
+            }
+          ]
+        },
+        {
+          "source_anchor": "def portable_relative(",
+          "behavior": "拒绝越界、保留名、大小写别名及不兼容路径，目录名派生不改真实书名。",
+          "decision": "legacy_mechanism_not_ported",
+          "workbench_evidence": [
+            {
+              "path": "backend/store.py"
+            },
+            {
+              "path": "docs/superpowers/plans/2026-11-05-pi-integration.md"
+            }
+          ],
+          "remaining": "当前file id与解析不是该跨平台命名层；未执行Windows注册表探测。"
+        }
+      ],
+      "limits": [
+        "不声称三平台路径和耐久语义等价，文件重试不能变成图像重试。"
+      ],
+      "program_equivalence_verified": false
+    },
+    {
+      "source": "vertical-comic-preproduction/scripts/prepared_input_source.js",
+      "source_sha256": "cfca6e66c6edf16da66a4437286cdf6c0179d421e680082b2f255afda445d6fd",
+      "group": "dispatch_capacity",
+      "disposition": "legacy_mechanism_not_ported",
+      "summary": "旧流式输入准备、有界buffer和revision订阅未迁成第二套准备队列。",
+      "clauses": [
+        {
+          "source_anchor": "async function pull()",
+          "behavior": "prepare-inputs后台启动，ready-inputs按record_digest去重并限制bufferSize。",
+          "decision": "legacy_mechanism_not_ported",
+          "workbench_evidence": [
+            {
+              "path": "backend/image_jobs.py"
+            },
+            {
+              "path": "backend/image_batches.py"
+            }
+          ]
+        },
+        {
+          "source_anchor": "PREPARATION_COMPLETION_NOT_OBSERVED",
+          "behavior": "观察完成后的空快照才EOF，revision等待避免漏发布；EOF不是交付成功。",
+          "decision": "semantic_retained",
+          "workbench_evidence": [
+            {
+              "path": "backend/image_batches.py"
+            }
+          ],
+          "remaining": "当前按任务真实状态判断；无旧nextPrepared、准备修订协议或相同缓冲性能保证。"
+        }
+      ],
+      "limits": [
+        "prepared call不是源流式编译缓存，不把当前候选预览等同源准备流完成。"
+      ],
+      "program_equivalence_verified": false
+    },
+    {
+      "source": "vertical-comic-preproduction/scripts/production_activation.py",
+      "source_sha256": "ff0199da485f6f595af8af7a08bd28caa41c0fad1974f2b011e8086442547140",
+      "group": "dispatch_capacity",
+      "disposition": "mixed",
+      "summary": "准确生产授权与恢复不偷换owner保留；旧多文件路由journal和RV激活不接入。",
+      "clauses": [
+        {
+          "source_anchor": "def transact(",
+          "behavior": "PREPARED journal记录before/after，所有guard先核再逐目标恢复COMMITTED并留历史。",
+          "decision": "legacy_mechanism_not_ported",
+          "workbench_evidence": [
+            {
+              "path": "backend/store.py"
+            }
+          ],
+          "remaining": "SQLite事务处理本项目原子状态，不消费routing-transaction文件。"
+        },
+        {
+          "source_anchor": "def activate(",
+          "behavior": "准确生产授权和完整源序后绑定control，已有owner不得经激活捷径转移。",
+          "decision": "host_replaced",
+          "workbench_evidence": [
+            {
+              "path": "backend/tests/test_image_batches.py",
+              "test": "test_batch_start_checks_all_frozen_inputs_before_any_submission"
+            },
+            {
+              "path": "backend/image_jobs.py"
+            }
+          ]
+        },
+        {
+          "source_anchor": "def switch_view(",
+          "behavior": "源本地执行视图切换核版本及身份，不改原证据。",
+          "decision": "legacy_mechanism_not_ported",
+          "workbench_evidence": [
+            {
+              "path": "docs/superpowers/plans/2026-11-05-pi-integration.md"
+            }
+          ],
+          "remaining": "没有旧接包视图切换API，不能用源manifest替换当前冻结任务。"
+        }
+      ],
+      "limits": [
+        "当前项目导入/恢复不是旧RV整话原子路由导入，未证明源事务崩溃语义等价。"
+      ],
+      "program_equivalence_verified": false
+    },
+    {
+      "source": "vertical-comic-preproduction/scripts/production_metrics.py",
+      "source_sha256": "15507346ab616ef5c9ae750f09bb4051bb02fb912bf9add1768850341cd36592",
+      "group": "dispatch_capacity",
+      "disposition": "mixed",
+      "summary": "真实观测与未知分开保留；源跨话指标人口、回归率和原生利用率报告未迁。",
+      "clauses": [
+        {
+          "source_anchor": "def union_seconds(",
+          "behavior": "并发窗口求并集而非相加当墙钟，缺时间保持未知。",
+          "decision": "semantic_retained",
+          "workbench_evidence": [
+            {
+              "path": "backend/image_batch_control.py"
+            },
+            {
+              "path": "backend/image_provider.py"
+            }
+          ]
+        },
+        {
+          "source_anchor": "def _build(",
+          "behavior": "按格/attempt去重，可核原图hash；分别报告首轮QA、编辑回归、时间覆盖和缺失人口。",
+          "decision": "legacy_mechanism_not_ported",
+          "workbench_evidence": [
+            {
+              "path": "backend/image_attempts.py"
+            },
+            {
+              "path": "docs/superpowers/plans/2026-11-05-pi-integration.md"
+            }
+          ],
+          "remaining": "已有attempt/usage不等于完整跨话metrics报告，不补造用户接受数或利用率。"
+        },
+        {
+          "source_anchor": "def draft_metrics(",
+          "behavior": "只读明确派生/图集回执统计重复编译，不靠定时扫描猜时长。",
+          "decision": "legacy_mechanism_not_ported",
+          "workbench_evidence": [
+            {
+              "path": "docs/superpowers/plans/2026-11-05-pi-integration.md"
+            }
+          ]
+        }
+      ],
+      "limits": [
+        "费用未知不填零，当前host时间不等于纯服务渲染/人工审图或真实吞吐。"
+      ],
+      "program_equivalence_verified": false
+    },
+    {
+      "source": "vertical-comic-preproduction/scripts/production_progress.py",
+      "source_sha256": "82ef7d4742484383a83646d6561118eae0094fba8ca307307fe0a24a3dc9ee2d",
+      "group": "dispatch_capacity",
+      "disposition": "mixed",
+      "summary": "派生进度不能修改门禁保留；旧加权百分比、目录缓存和ZIP完成器不迁。",
+      "clauses": [
+        {
+          "source_anchor": "def show(",
+          "behavior": "仅读summary/stat，变化要求refresh，due/ACK防重复显示，不定时重做整套审核。",
+          "decision": "mixed",
+          "workbench_evidence": [
+            {
+              "path": "frontend/src/ImageBatches.tsx"
+            }
+          ],
+          "remaining": "当前显示持久任务状态，无同字段10/15分钟游标或加权进度算法。"
+        },
+        {
+          "source_anchor": "def observe_runtime(",
+          "behavior": "消费实际运行结果，不执行checker或改写原结论。",
+          "decision": "semantic_retained",
+          "workbench_evidence": [
+            {
+              "path": "backend/image_provider.py"
+            },
+            {
+              "path": "frontend/src/ImageBatches.tsx"
+            }
+          ]
+        },
+        {
+          "source_anchor": "def complete(",
+          "behavior": "仅显式收尾校验准确源范围和真实ZIP，100%不授予批准。",
+          "decision": "legacy_mechanism_not_ported",
+          "workbench_evidence": [
+            {
+              "path": "docs/superpowers/plans/2026-11-05-pi-integration.md"
+            }
+          ],
+          "remaining": "当前batch completed不是源ZIP交付；本专题不加旧极简交付器。"
+        }
+      ],
+      "limits": [
+        "未迁receive/observation_binding缓存，不将旧进度快照称当前checkpoint恢复协议。"
+      ],
+      "program_equivalence_verified": false
+    },
+    {
+      "source": "vertical-comic-preproduction/scripts/production_runtime.py",
+      "source_sha256": "c5eb4c568171b28d48f2f243265aad1562538db6250743ba775e881a1f1a7141",
+      "group": "dispatch_capacity",
+      "disposition": "mixed",
+      "summary": "准确输入编译、登记及唯一剧情返修分由当前模块实现；不运行旧CLI全集。",
+      "clauses": [
+        {
+          "source_anchor": "def compile_jobs(",
+          "behavior": "从实际提示词/参考编译，candidate/input_audit不授予派发许可。",
+          "decision": "host_replaced",
+          "workbench_evidence": [
+            {
+              "path": "backend/image_jobs.py"
+            },
+            {
+              "path": "backend/image_provider.py"
+            }
+          ]
+        },
+        {
+          "source_anchor": "def commit_updates(",
+          "behavior": "CAS保存真实状态，图像返回与QA分别核验，不创建agent或用户批准。",
+          "decision": "host_replaced",
+          "workbench_evidence": [
+            {
+              "path": "backend/store.py"
+            },
+            {
+              "path": "backend/image_provider.py"
+            },
+            {
+              "path": "backend/image_postprocess.py"
+            }
+          ]
+        },
+        {
+          "source_anchor": "def authorize_episode_repair(",
+          "behavior": "唯一第二轮留原失败，另提供超过五张失败的共因诊断登记。",
+          "decision": "mixed",
+          "workbench_evidence": [
+            {
+              "path": "backend/tests/test_image_postprocess.py",
+              "test": "test_authorized_generate_review_one_story_repair_and_recheck_keeps_both_candidates"
+            }
+          ],
+          "remaining": "当前critical/story一轮及原候选保留已实现；未迁五张阈值诊断/episode_repair文件/全部CLI字段。"
+        }
+      ],
+      "limits": [
+        "当前业务门禁不代表原CAMERA/镜头/规则/QA全集逐程序重实现。"
+      ],
+      "program_equivalence_verified": false
+    },
+    {
+      "source": "vertical-comic-preproduction/scripts/runtime_pipeline.py",
+      "source_sha256": "ccfb1cd8966e32ff2674b51de16de503cb36fa526fc3161d7162a78542746387",
+      "group": "dispatch_capacity",
+      "disposition": "mixed",
+      "summary": "锁外准备/锁内版本复核与真实事件保留；旧read_snapshot和指标目录不迁。",
+      "clauses": [
+        {
+          "source_anchor": "def claim_and_register(",
+          "behavior": "准确prepared_reference核当前批准、时钟、依赖、lease，新鲜ACK才可invoke。",
+          "decision": "host_replaced",
+          "workbench_evidence": [
+            {
+              "path": "backend/image_jobs.py"
+            },
+            {
+              "path": "backend/image_attempts.py"
+            },
+            {
+              "path": "backend/tests/test_image_job_retries.py",
+              "test": "test_between_attempt_guards_stop_cancellation_and_input_change"
+            }
+          ]
+        },
+        {
+          "source_anchor": "def settle_captured_return(",
+          "behavior": "capture耐久后只结算确切原permit，释放槽不能当QA或输出登记完成。",
+          "decision": "host_replaced",
+          "workbench_evidence": [
+            {
+              "path": "backend/image_provider.py"
+            },
+            {
+              "path": "backend/tests/test_image_postprocess.py",
+              "test": "test_vision_wait_does_not_hold_image_capacity_or_block_other_ready_generation"
+            }
+          ]
+        },
+        {
+          "source_anchor": "def metrics(",
+          "behavior": "只汇总实际phase样本/median，重叠区间不相加；未观测审图为None。",
+          "decision": "mixed",
+          "workbench_evidence": [
+            {
+              "path": "backend/image_batch_control.py"
+            }
+          ],
+          "remaining": "当前保留真实累计预算和未知边界，没有pipeline_metrics目录/phase median同格式汇总。"
+        }
+      ],
+      "limits": [
+        "SQLite事务不是旧任意文件完整读取集，不承诺相同短锁性能。"
+      ],
+      "program_equivalence_verified": false
+    },
+    {
+      "source": "vertical-comic-preproduction/scripts/scoped_episode_workflow.py",
+      "source_sha256": "8d30104e992dc3463a719e1d55a1312d6a027bda8a541b0bffefe396bfd5fbd1",
+      "group": "dispatch_capacity",
+      "disposition": "mixed",
+      "summary": "准确整话/局部缺口与真实依赖语义保留；旧综合门禁未直接注册。",
+      "clauses": [
+        {
+          "source_anchor": "def evaluate_episode(",
+          "behavior": "按完整源序/批准/取消和局部输入分类HOLD，独立分支可继续。",
+          "decision": "host_replaced",
+          "workbench_evidence": [
+            {
+              "path": "backend/tests/test_image_batches.py",
+              "test": "test_batch_start_checks_all_frozen_inputs_before_any_submission"
+            },
+            {
+              "path": "backend/tests/test_image_dependencies.py",
+              "test": "test_dependency_waits_for_exact_adopted_reviewed_pixels_and_independent_panel_continues"
+            },
+            {
+              "path": "backend/tests/test_image_batches.py",
+              "test": "test_unknown_panel_is_not_reposted_and_independent_remaining_panel_continues"
+            }
+          ]
+        },
+        {
+          "source_anchor": "def _evaluate_episode(",
+          "behavior": "reservation_batch仅深检需要候选，全局身份/轮次/历史检查仍覆盖完整范围。",
+          "decision": "mixed",
+          "workbench_evidence": [
+            {
+              "path": "backend/image_batches.py"
+            },
+            {
+              "path": "backend/image_jobs.py"
+            }
+          ],
+          "remaining": "当前预检固定包、提交再守卫；不宣称原所有stage/语义/QA/源序输出逐项存在。"
+        }
+      ],
+      "limits": [
+        "不把字段校验称已执行旧CAMERA或完整镜头合同，相关创作源由其他专题审查。"
+      ],
+      "program_equivalence_verified": false
+    },
+    {
+      "source": "vertical-comic-preproduction/scripts/scoped_inputs.py",
+      "source_sha256": "afa2d678233aa670947acade39623c525483d13cfdf0ce14236faac8cbc70a88",
+      "group": "dispatch_capacity",
+      "disposition": "mixed",
+      "summary": "精准版本范围及历史不可改写保留，半话视图和旧HOLD字典不照搬。",
+      "clauses": [
+        {
+          "source_anchor": "def resolve_context(",
+          "behavior": "核source/plan/镜头/进度源序一致，返回只读当前视图不改历史attempt包。",
+          "decision": "host_replaced",
+          "workbench_evidence": [
+            {
+              "path": "backend/image_jobs.py"
+            },
+            {
+              "path": "backend/image_attempts.py"
+            },
+            {
+              "path": "backend/image_dependencies.py"
+            }
+          ]
+        },
+        {
+          "source_anchor": "def approval_for(",
+          "behavior": "复用原准确范围/版本证明，不扩张批准、不生成APPROVED。",
+          "decision": "host_replaced",
+          "workbench_evidence": [
+            {
+              "path": "backend/image_jobs.py"
+            },
+            {
+              "path": "backend/tests/test_image_batches.py",
+              "test": "test_batch_start_checks_all_frozen_inputs_before_any_submission"
+            }
+          ]
+        },
+        {
+          "source_anchor": "def blocked_panels(",
+          "behavior": "未知范围HOLD全局阻塞，有证据局部缺口沿真正实图依赖传播。",
+          "decision": "mixed",
+          "workbench_evidence": [
+            {
+              "path": "backend/tests/test_image_dependencies.py",
+              "test": "test_dependency_waits_for_exact_adopted_reviewed_pixels_and_independent_panel_continues"
+            }
+          ],
+          "remaining": "当前依赖分支等待已实现，无任意book/half/states HOLD格式和H001/H002迁移。"
+        }
+      ],
+      "limits": [
+        "旧全话/半话分支仅作来源，不把其文件状态直接混入新项目。"
+      ],
+      "program_equivalence_verified": false
+    },
+    {
+      "source": "vertical-comic-preproduction/scripts/slot_leases.py",
+      "source_sha256": "cc1e664ec81177c152e05d9130ccadc4a285007c0eee6ff9689cb4f70da3125b",
+      "group": "dispatch_capacity",
+      "disposition": "mixed",
+      "summary": "容量调整不重置历史保留，旧每话lease/owner分配不迁。",
+      "clauses": [
+        {
+          "source_anchor": "def allocate(",
+          "behavior": "重分配须旧writer确停且无预留/在途/未知，旧账本留存。",
+          "decision": "legacy_mechanism_not_ported",
+          "workbench_evidence": [
+            {
+              "path": "docs/superpowers/plans/2026-11-05-pi-integration.md"
+            }
+          ]
+        },
+        {
+          "source_anchor": "def resize(",
+          "behavior": "同owner降低dispatch_target可到0，slots仍覆盖活动请求，不变attempt和生产范围。",
+          "decision": "mixed",
+          "workbench_evidence": [
+            {
+              "path": "backend/tests/test_capacity.py",
+              "test": "test_text_capacity_is_fifo_shared_and_resizing_never_cancels_active_work"
+            }
+          ],
+          "remaining": "当前共享用途容量可调且不取消在途；无lease_id/dispatch_target双字段。"
+        },
+        {
+          "source_anchor": "def release_unsubmitted(",
+          "behavior": "只有确未提交的RESERVED可释放，未知不能按超时回收。",
+          "decision": "host_replaced",
+          "workbench_evidence": [
+            {
+              "path": "backend/image_provider.py"
+            },
+            {
+              "path": "backend/image_attempts.py"
+            }
+          ]
+        }
+      ],
+      "limits": [
+        "当前unknown释放本地连接槽但禁止同call重发，不等价源远端permit长期占槽。"
+      ],
+      "program_equivalence_verified": false
+    },
+    {
+      "source": "vertical-comic-preproduction/scripts/staged_workflow.py",
+      "source_sha256": "9e5a6fb476b6feabf232836c8a6d505424226693d6636478ad8887fab2366363",
+      "group": "dispatch_capacity",
+      "disposition": "mixed",
+      "summary": "阶段批准/候选不代表真实生产的原则保留，旧阶段执行器不注册。",
+      "clauses": [
+        {
+          "source_anchor": "def approval_errors(",
+          "behavior": "批准限定书话、阶段、格及成果hash，技术PASS不可合成用户决定。",
+          "decision": "host_replaced",
+          "workbench_evidence": [
+            {
+              "path": "backend/image_jobs.py"
+            },
+            {
+              "path": "backend/tests/test_image_batches.py",
+              "test": "test_batch_start_checks_all_frozen_inputs_before_any_submission"
+            }
+          ]
+        },
+        {
+          "source_anchor": "def _evaluate_impl(",
+          "behavior": "退役模式HOLD并提示IMPORT_HISTORICAL_DATA，不默认启用旧半话。",
+          "decision": "legacy_mechanism_not_ported",
+          "workbench_evidence": [
+            {
+              "path": "backend/bundled_skills.py"
+            },
+            {
+              "path": "docs/superpowers/plans/2026-11-05-pi-integration.md"
+            }
+          ],
+          "remaining": "当前不接此源state或旧分支。"
+        },
+        {
+          "source_anchor": "def preflight_many(",
+          "behavior": "公共检查后逐选格原门禁，candidate/input_audit不授予调用权限。",
+          "decision": "mixed",
+          "workbench_evidence": [
+            {
+              "path": "backend/image_jobs.py"
+            },
+            {
+              "path": "backend/image_batches.py"
+            }
+          ],
+          "remaining": "当前自己的schema与明确start替代相应关口，无完整旧阶段枚举/证明格式输出。"
+        }
+      ],
+      "limits": [
+        "源六项QA/CAMERA不是当前已全部实现事实，不为源合同自动新增验收流程。"
+      ],
+      "program_equivalence_verified": false
+    },
+    {
+      "source": "vertical-comic-preproduction/scripts/task_coordination.py",
+      "source_sha256": "40f08edd20b2dc4c5d062e2c785aaaa9b97039afa656bbcaeebfa5542e936b9b",
+      "group": "dispatch_capacity",
+      "disposition": "mixed",
+      "summary": "检查点与未知先对账保留，旧多agent事件协调/交付检查不迁。",
+      "clauses": [
+        {
+          "source_anchor": "def update(",
+          "behavior": "revision+event_id幂等登记register/observe/accept/checkpoint，成果需真实文件hash。",
+          "decision": "mixed",
+          "workbench_evidence": [
+            {
+              "path": "backend/agent_runtime.py"
+            },
+            {
+              "path": "backend/recovery_service.py"
+            }
+          ],
+          "remaining": "现有任务/checkpoint权威不同，无任意子agent register/accept事件API。"
+        },
+        {
+          "source_anchor": "def resume(",
+          "behavior": "只读列任务/阻塞，不唤醒旧执行者，失联不能重复派发。",
+          "decision": "host_replaced",
+          "workbench_evidence": [
+            {
+              "path": "backend/tests/test_tool_recovery_e2e.py",
+              "test": "test_actual_host_saved_then_node_killed_recovery_never_replays_tool"
+            },
+            {
+              "path": "backend/image_provider.py"
+            }
+          ]
+        },
+        {
+          "source_anchor": "def finish(",
+          "behavior": "必要任务须ACCEPTED，可选writer须接受或证实停止，然后核ZIP并绑定hash。",
+          "decision": "legacy_mechanism_not_ported",
+          "workbench_evidence": [
+            {
+              "path": "docs/superpowers/plans/2026-11-05-pi-integration.md"
+            }
+          ],
+          "remaining": "不新增coordination.json、旧ZIP收尾器或离线自动唤醒。"
+        }
+      ],
+      "limits": [
+        "普通项目恢复不能冒充通用跨结束轮次agent生命周期协调。"
+      ],
+      "program_equivalence_verified": false
+    },
+    {
+      "source": "vertical-comic-preproduction/scripts/validation_pool.py",
+      "source_sha256": "a4ba8acd510901b30336c290e9ee76e8ae4a7db6942bc5661662765a3ab1c07e",
+      "group": "dispatch_capacity",
+      "disposition": "legacy_mechanism_not_ported",
+      "summary": "进程内有界事实/字节缓存不迁，动态授权与容量不得缓存成许可。",
+      "clauses": [
+        {
+          "source_anchor": "def file_bytes(",
+          "behavior": "按inode/size/mtime/ctime复核字节和hash，有界缓存，Windows不跨操作保留字节。",
+          "decision": "legacy_mechanism_not_ported",
+          "workbench_evidence": [
+            {
+              "path": "backend/store.py"
+            }
+          ]
+        },
+        {
+          "source_anchor": "def get(self,namespace,token,memo):",
+          "behavior": "白名单namespace逐次核hash/负查询/路径依赖，失效丢弃，实时门禁不整包缓存。",
+          "decision": "semantic_retained",
+          "workbench_evidence": [
+            {
+              "path": "backend/image_jobs.py"
+            },
+            {
+              "path": "backend/tests/test_image_job_retries.py",
+              "test": "test_between_attempt_guards_stop_cancellation_and_input_change"
+            }
+          ],
+          "remaining": "不迁旧Pool、priority LRU和跨操作命中统计，保留每次动态守卫。"
+        }
+      ],
+      "limits": [
+        "没有缓存性能或Windows变化检测等价验收，不运行旧校验器。"
+      ],
+      "program_equivalence_verified": false
+    },
+    {
+      "source": "vertical-comic-preproduction/scripts/worker_watchdog.py",
+      "source_sha256": "1f116b8e845ecde24e8bb0c2275bb2268629619004db68f16346d9fe6f118f85",
+      "group": "dispatch_capacity",
+      "disposition": "mixed",
+      "summary": "诊断不能换owner/重试/批准保留，源阈值告警和发送ACK链不迁。",
+      "clauses": [
+        {
+          "source_anchor": "def evaluate(",
+          "behavior": "只返回T1/T2、WAIT_HUMAN/REQUESTS_IN_FLIGHT/EXECUTOR_TERMINATED建议，不动作。",
+          "decision": "legacy_mechanism_not_ported",
+          "workbench_evidence": [
+            {
+              "path": "docs/superpowers/plans/2026-11-05-pi-integration.md"
+            }
+          ],
+          "remaining": "当前无旧watch-check/ack或阶段空闲报警服务，不增监控agent。"
+        },
+        {
+          "source_anchor": "def record_progress(",
+          "behavior": "相同阶段/类型/路径/hash重复不能重置真实进展时钟。",
+          "decision": "semantic_retained",
+          "workbench_evidence": [
+            {
+              "path": "backend/image_provider.py"
+            },
+            {
+              "path": "frontend/src/ImageBatches.tsx"
+            }
+          ]
+        },
+        {
+          "source_anchor": "def dispatch_alerts(",
+          "behavior": "按attempt区分就绪未派发、登记未调用、慢请求和完成未保存，阈值仅建议查证。",
+          "decision": "mixed",
+          "workbench_evidence": [
+            {
+              "path": "backend/tests/test_tool_recovery_e2e.py",
+              "test": "test_actual_host_saved_then_node_killed_recovery_never_replays_tool"
+            },
+            {
+              "path": "backend/image_provider.py"
+            }
+          ],
+          "remaining": "已有受限保存回执恢复，无全套自动延迟诊断与event_id实际发送去重。"
+        }
+      ],
+      "limits": [
+        "无通知送达或旧executor生命周期能力保证；告警不能当确认无图。"
+      ],
+      "program_equivalence_verified": false
+    },
+    {
+      "source": "vertical-comic-preproduction/scripts/workflow_session.py",
+      "source_sha256": "00bd284dede4094f948872df25de37a8b42b69be3e9502dc7280bc348edf74f7",
+      "group": "dispatch_capacity",
+      "disposition": "mixed",
+      "summary": "固定每话缓存命令路由不照搬，当前生产/图像/恢复通过明确宿主API。",
+      "clauses": [
+        {
+          "source_anchor": "class WorkflowSession:",
+          "behavior": "固定state/工具上下文分发prepare/claim/capture/qa，final-check禁跨操作池。",
+          "decision": "legacy_mechanism_not_ported",
+          "workbench_evidence": [
+            {
+              "path": "backend/agent_runtime.py"
+            },
+            {
+              "path": "backend/bundled_skills.py"
+            }
+          ],
+          "remaining": "不把所有action开放为模型工具，不运行源Python会话。"
+        },
+        {
+          "source_anchor": "elif action=='recover-no-image':",
+          "behavior": "terminal与准确授权后才能技术恢复；终止执行者只recover-returns。",
+          "decision": "host_replaced",
+          "workbench_evidence": [
+            {
+              "path": "backend/tests/test_image_job_retries.py",
+              "test": "test_authorized_not_sent_retry_is_orchestrated_without_extra_logical_call"
+            },
+            {
+              "path": "backend/tests/test_tool_recovery_e2e.py",
+              "test": "test_actual_host_saved_then_node_killed_recovery_never_replays_tool"
+            },
+            {
+              "path": "docs/pi-recovery-ui-review.md"
+            }
+          ]
+        },
+        {
+          "source_anchor": "elif action=='context-rebind-status':",
+          "behavior": "等价上下文计划/应用/状态独立，不因缓存存活放行。",
+          "decision": "legacy_mechanism_not_ported",
+          "workbench_evidence": [
+            {
+              "path": "backend/image_jobs.py"
+            }
+          ],
+          "remaining": "当前依赖绑定与输入变更重预览不是旧通用context-rebind。"
+        }
+      ],
+      "limits": [
+        "现有Pi会话不是源命令全集或每话validation_pool复用的等价实现。"
+      ],
+      "program_equivalence_verified": false
+    },
+    {
+      "source": "vertical-comic-preproduction/references/execution-compatibility.md",
+      "source_sha256": "710b4db567415f7b915dfb9703bc0eceb1558a001719428c41d49ab286d54f36",
+      "group": "recovery_clock",
+      "disposition": "mixed",
+      "summary": "不执行旧脚本、保全历史与未知先核对保留；旧RV兼容数据格式不自动纳入宿主。",
+      "clauses": [
+        {
+          "source_anchor": "不得加入sys.path",
+          "behavior": "旧包作证据，固定当前执行器，未知先对账，不重置时钟和质量轮次。",
+          "decision": "host_replaced",
+          "workbench_evidence": [
+            {
+              "path": "backend/bundled_skills.py"
+            },
+            {
+              "path": "backend/image_provider.py"
+            },
+            {
+              "path": "backend/image_attempts.py"
+            }
+          ]
+        },
+        {
+          "source_anchor": "连续三次观察到服务连接/解码错误",
+          "behavior": "旧三次熔断与完整异常/native时间独立记录，FULFILLED不证明有图。",
+          "decision": "mixed",
+          "workbench_evidence": [
+            {
+              "path": "backend/image_provider.py"
+            },
+            {
+              "path": "backend/image_attempts.py"
+            }
+          ],
+          "remaining": "当前安全枚举/脱敏诊断代替异常全文，未迁三次同源熔断，不保存密钥敏感正文。"
+        },
+        {
+          "source_anchor": "faithful_atlas_v1",
+          "behavior": "源忠实图集逐像素裁切映射，多用途去重不改变原身份和批准。",
+          "decision": "legacy_mechanism_not_ported",
+          "workbench_evidence": [
+            {
+              "path": "docs/superpowers/plans/2026-11-05-pi-integration.md"
+            }
+          ],
+          "remaining": "本专题不新增旧图集/源号映射/规则例外引擎，必要性由相关创作源和用户范围判定。"
+        }
+      ],
+      "limits": [
+        "没有旧episode/half包导入；当前重试UI及受限工具恢复已有入口，不能再列完全缺失。"
+      ],
+      "program_equivalence_verified": false
+    },
+    {
+      "source": "vertical-comic-preproduction/references/runtime-clock.md",
+      "source_sha256": "38bad3bd7a13593c1a883c521a11e8f8b35458022fd3fcbbfcc6d9d88b510c2c",
+      "group": "recovery_clock",
+      "disposition": "mixed",
+      "summary": "批次4h目标/7h有效硬限由宿主实现，旧全职责/owner/Hook/wall合同不迁。",
+      "clauses": [
+        {
+          "source_anchor": "四小时完成目标、七小时有效运行硬限",
+          "behavior": "暂停等用户排除，服务/排队/实际工作计时，恢复不清零，硬限保存在途。",
+          "decision": "host_replaced",
+          "workbench_evidence": [
+            {
+              "path": "backend/tests/test_image_batch_control.py",
+              "test": "test_hard_limit_stops_new_dispatch_keeps_return_and_recovery_cannot_reset_budget"
+            },
+            {
+              "path": "backend/tests/test_image_batch_control.py",
+              "test": "test_waiting_for_user_does_not_reset_or_advance_effective_time"
+            },
+            {
+              "path": "backend/tests/test_image_batch_control.py",
+              "test": "test_unclean_restart_marks_unknown_time_upper_bound_and_cannot_reset_hard_limit"
+            }
+          ]
+        },
+        {
+          "source_anchor": "amend-policy",
+          "behavior": "旧3/4h到4/7h追加修订且绑定原起点/上下文，owner/跨boot/Hook另有合同。",
+          "decision": "legacy_mechanism_not_ported",
+          "workbench_evidence": [
+            {
+              "path": "docs/superpowers/plans/2026-11-05-pi-integration.md"
+            },
+            {
+              "path": "backend/image_batch_control.py"
+            }
+          ],
+          "remaining": "没有全职责时钟或任意旧时钟升级/桌面Interrupt Hook，不由源文新增。"
+        },
+        {
+          "source_anchor": "TIME_UNCERTAIN",
+          "behavior": "离线缺事件不能猜暂停，finish不能掩盖未完成。",
+          "decision": "host_replaced",
+          "workbench_evidence": [
+            {
+              "path": "backend/tests/test_image_batch_control.py",
+              "test": "test_unclean_restart_marks_unknown_time_upper_bound_and_cannot_reset_hard_limit"
+            },
+            {
+              "path": "backend/image_batch_control.py"
+            }
+          ]
+        }
+      ],
+      "limits": [
+        "当前每批次计时，不是前期/全部话共享职责时钟，不保证四小时交齐或真实Hook接线。"
+      ],
+      "program_equivalence_verified": false
+    },
+    {
+      "source": "vertical-comic-preproduction/references/task-recovery.md",
+      "source_sha256": "7136117aa9854a5ceac86b54ae8f0622be5da3e0de1b8e1d7d4d0dbbb519dcf3",
+      "group": "recovery_clock",
+      "disposition": "mixed",
+      "summary": "检查点不是恢复执行、失联不能重发保留；旧多agent协调和离线唤醒不迁。",
+      "clauses": [
+        {
+          "source_anchor": "本机制管理已授权的子任务",
+          "behavior": "协调不创建agent/图像调用/预算，JSON检查点不唤醒会话。",
+          "decision": "semantic_retained",
+          "workbench_evidence": [
+            {
+              "path": "backend/agent_runtime.py"
+            },
+            {
+              "path": "backend/recovery_service.py"
+            }
+          ]
+        },
+        {
+          "source_anchor": "恢复时必须先查询宿主现态",
+          "behavior": "只读resume后核真实宿主，图像原账本独立，找不到不代表未执行。",
+          "decision": "host_replaced",
+          "workbench_evidence": [
+            {
+              "path": "backend/tests/test_tool_recovery_e2e.py",
+              "test": "test_actual_host_saved_then_node_killed_recovery_never_replays_tool"
+            },
+            {
+              "path": "backend/image_provider.py"
+            },
+            {
+              "path": "docs/pi-recovery-ui-review.md"
+            }
+          ]
+        },
+        {
+          "source_anchor": "自动唤醒和离线通知尚未验证",
+          "behavior": "默认不创建heartbeat，shell后台循环不能替代恢复。",
+          "decision": "legacy_mechanism_not_ported",
+          "workbench_evidence": [
+            {
+              "path": "docs/superpowers/plans/2026-11-05-pi-integration.md"
+            }
+          ],
+          "remaining": "当前不启用离线通知/自动唤醒，不额外创建自动化或旧协调文件。"
+        }
+      ],
+      "limits": [
+        "已有图像明确恢复、检查点续接及受限工具回执恢复，不等于通用未知模型自动恢复。"
+      ],
+      "program_equivalence_verified": false
+    },
+    {
+      "source": "vertical-comic-preproduction/scripts/execution_timing.py",
+      "source_sha256": "f7a686fe223464071fff1fe1f619bfcbdd9c158cd6c66d73e8e0f5e324aac683",
+      "group": "recovery_clock",
+      "disposition": "mixed",
+      "summary": "登记/请求/原生开始和QA登记的区分保留，旧时间事件schema不额外引入。",
+      "clauses": [
+        {
+          "source_anchor": "def observe(",
+          "behavior": "ready/qa_registered首次观测绑定attempt，新attempt清旧时间，QA登记不冒充审图完成。",
+          "decision": "mixed",
+          "workbench_evidence": [
+            {
+              "path": "backend/image_attempts.py"
+            },
+            {
+              "path": "backend/image_provider.py"
+            }
+          ],
+          "remaining": "当前有创建/终结真实时间，无旧ready_at/qa_recorded_at人口覆盖；缺失不回补。"
+        },
+        {
+          "source_anchor": "def checked_invocation_event(",
+          "behavior": "REQUESTED/STARTED/RETURNED各有实际来源定位，时间须含时区且非未来。",
+          "decision": "semantic_retained",
+          "workbench_evidence": [
+            {
+              "path": "backend/image_provider.py"
+            }
+          ],
+          "remaining": "HTTP提交返回不等于纯服务渲染开始，无旧native事件上报API。"
+        }
+      ],
+      "limits": [
+        "宿主观测时间不能推导CPU、主动审图或纯渲染时长。"
+      ],
+      "program_equivalence_verified": false
+    },
+    {
+      "source": "vertical-comic-preproduction/scripts/no_image_recovery.py",
+      "source_sha256": "71bb3dbeb2c646a5f1edc2a0dabb3e303df365c5de51b141edbf1799c91ea87b",
+      "group": "recovery_clock",
+      "disposition": "mixed",
+      "summary": "确认未发送0–4次技术恢复已接冻结授权、attempt、jobs及UI；旧较宽无图证明和缺格交付不迁。",
+      "clauses": [
+        {
+          "source_anchor": "NETWORK_MAX_RETRIES = 4",
+          "behavior": "网络技术恢复至多额外四次，原失败历史保留，不加质量round，内容拒绝不重试。",
+          "decision": "host_replaced",
+          "workbench_evidence": [
+            {
+              "path": "backend/tests/test_image_job_retries.py",
+              "test": "test_authorized_not_sent_retry_is_orchestrated_without_extra_logical_call"
+            },
+            {
+              "path": "docs/pi-technical-retry-ui-review.md"
+            },
+            {
+              "path": "backend/image_attempts.py"
+            }
+          ]
+        },
+        {
+          "source_anchor": "def proof(",
+          "behavior": "旧NOT_INVOKED/FAILED_NO_OUTPUT/RESOLVED_NO_OUTPUT需真实证据和准确用户授权；超时缺图不证明无输出。",
+          "decision": "mixed",
+          "workbench_evidence": [
+            {
+              "path": "backend/image_provider.py"
+            },
+            {
+              "path": "backend/image_attempts.py"
+            }
+          ],
+          "remaining": "当前更窄：只连接未建立/池等待超时且无响应，未知即使人工称无图也不自动变可重试attempt。"
+        },
+        {
+          "source_anchor": "NETWORK_RETRY_EXHAUSTED",
+          "behavior": "源耗尽/内容拒绝可按授权登记无占位图的缺格交付，不写QA PASS。",
+          "decision": "legacy_mechanism_not_ported",
+          "workbench_evidence": [
+            {
+              "path": "backend/image_jobs.py"
+            },
+            {
+              "path": "docs/superpowers/plans/2026-11-05-pi-integration.md"
+            }
+          ],
+          "remaining": "当前保留blocked/rejected及证据，无content_failure_delivery/network_failure_delivery极简ZIP合同。"
+        }
+      ],
+      "limits": [
+        "不以错误文字关键词或旧证明文件增加余量；真实供应商/断电耐久未测，不能称全套旧恢复等价。"
+      ],
+      "program_equivalence_verified": false
+    },
+    {
+      "source": "vertical-comic-preproduction/scripts/runtime_clock.py",
+      "source_sha256": "80f5885b5b60654b15d8a2e228f51277779990eaf81fcdb5b21f0474913e73ff",
+      "group": "recovery_clock",
+      "disposition": "mixed",
+      "summary": "当前累计批次预算替代相应计时安全边界，旧boot/session owner与wall模式不执行。",
+      "clauses": [
+        {
+          "source_anchor": "def status(",
+          "behavior": "按真实事件算active/pause，跨boot或缺事件TIME_UNCERTAIN，不用FINISHED补成功。",
+          "decision": "host_replaced",
+          "workbench_evidence": [
+            {
+              "path": "backend/image_batch_control.py"
+            },
+            {
+              "path": "backend/tests/test_image_batch_control.py",
+              "test": "test_unclean_restart_marks_unknown_time_upper_bound_and_cannot_reset_hard_limit"
+            }
+          ]
+        },
+        {
+          "source_anchor": "def amend_policy(",
+          "behavior": "绑定原起点上下文追加旧3/4h到4/7h策略，不重发七小时。",
+          "decision": "legacy_mechanism_not_ported",
+          "workbench_evidence": [
+            {
+              "path": "docs/superpowers/plans/2026-11-05-pi-integration.md"
+            }
+          ],
+          "remaining": "无旧策略修订API，当前批次恢复不可重置硬限。"
+        },
+        {
+          "source_anchor": "def attach_current(",
+          "behavior": "按本机会话核owner，旧owner未停不接管，attach不倒推暂停。",
+          "decision": "legacy_mechanism_not_ported",
+          "workbench_evidence": [
+            {
+              "path": "backend/image_batch_control.py"
+            },
+            {
+              "path": "docs/superpowers/plans/2026-11-05-pi-integration.md"
+            }
+          ],
+          "remaining": "不接Hook/会话注册表/旧owner协议，当前批次无需添加此流程。"
+        }
+      ],
+      "limits": [
+        "lease保守离线计账不同于源精确事件时钟；没有真实断电/跨boot耐久认证。"
+      ],
+      "program_equivalence_verified": false
+    },
+    {
+      "source": "vertical-comic-preproduction/scripts/runtime_import.py",
+      "source_sha256": "9edc180824f098b0586147b1bde22e6f25ad4a89ddfda1f4f9c73f8fed202c68",
+      "group": "recovery_clock",
+      "disposition": "legacy_mechanism_not_ported",
+      "summary": "旧整话RV导入固定执行器的格式专用工具不接入，保留证据原则不等于导入能力。",
+      "clauses": [
+        {
+          "source_anchor": "def inspect_source(",
+          "behavior": "只接受episode_async+episode_preparation，半话缺映射/受管owner/取消/第三轮等HOLD。",
+          "decision": "legacy_mechanism_not_ported",
+          "workbench_evidence": [
+            {
+              "path": "docs/superpowers/plans/2026-11-05-pi-integration.md"
+            }
+          ]
+        },
+        {
+          "source_anchor": "def apply_import(",
+          "behavior": "核源/目标manifest，留原状态和不可变收据，CAS切身份且不重置attempt/时钟。",
+          "decision": "semantic_retained",
+          "workbench_evidence": [
+            {
+              "path": "backend/image_attempts.py"
+            },
+            {
+              "path": "backend/skills.py"
+            }
+          ],
+          "remaining": "当前无旧RV导入API，项目/小说导入不是其等价能力。"
+        },
+        {
+          "source_anchor": "def historical_record(",
+          "behavior": "按历史来源核原记录，不改请求字节冒充新执行。",
+          "decision": "semantic_retained",
+          "workbench_evidence": [
+            {
+              "path": "backend/image_provider.py"
+            },
+            {
+              "path": "backend/image_attempts.py"
+            }
+          ]
+        }
+      ],
+      "limits": [
+        "不执行源包代码或热改旧运行，不承诺旧半话/五格和批准映射可导入。"
+      ],
+      "program_equivalence_verified": false
+    },
+    {
+      "source": "vertical-comic-preproduction/scripts/stage_deadlines.py",
+      "source_sha256": "3c4198252d57fb166e4631160d9d74f7270188ad9999bfc64b8e248663127e31",
+      "group": "recovery_clock",
+      "disposition": "legacy_mechanism_not_ported",
+      "summary": "分阶段降级/预测/末段返修策略未迁，不因源预算合同自动扩大产品。",
+      "clauses": [
+        {
+          "source_anchor": "LIMITS = {'preparation':2700",
+          "behavior": "职责有效秒持久计阶段窗口，只跳可选工作，不造图/审核/批准。",
+          "decision": "legacy_mechanism_not_ported",
+          "workbench_evidence": [
+            {
+              "path": "backend/image_batch_control.py"
+            },
+            {
+              "path": "docs/superpowers/plans/2026-11-05-pi-integration.md"
+            }
+          ],
+          "remaining": "现有批次4/7h和模型工具额度不等价45m/10m/90s/30s/8m/30s环节硬限。"
+        },
+        {
+          "source_anchor": "def forecast(",
+          "behavior": "同职责时钟至少五张新增实返估算余时，样本不足OBSERVING，不保四小时。",
+          "decision": "legacy_mechanism_not_ported",
+          "workbench_evidence": [
+            {
+              "path": "backend/image_batch_control.py"
+            },
+            {
+              "path": "docs/superpowers/plans/2026-11-05-pi-integration.md"
+            }
+          ],
+          "remaining": "无throughput.json/AT_RISK自动调度，真实速度未测不推断。"
+        },
+        {
+          "source_anchor": "def repair_schedule(",
+          "behavior": "缺首轮优先，仅实际依赖返修可前置；末15分钟不新开质量返修。",
+          "decision": "legacy_mechanism_not_ported",
+          "workbench_evidence": [
+            {
+              "path": "backend/image_postprocess.py"
+            },
+            {
+              "path": "docs/superpowers/plans/2026-11-05-pi-integration.md"
+            }
+          ],
+          "remaining": "当前一轮critical/story受批次硬限，无旧剩余900秒策略，不自动新增。"
+        }
+      ],
+      "limits": [
+        "源CAMERA/环节降级/全职责时钟不是计划自动新增要求；不声称相同调度策略。"
+      ],
+      "program_equivalence_verified": false
+    }
+  ]
+}

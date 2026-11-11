@@ -64,23 +64,30 @@ def test_rejected_keychain_write_does_not_store_secret(client,monkeypatch):
         assert db.execute('SELECT count(*) FROM settings').fetchone()[0]==0
 
 def test_stale_async_result_is_saved_separately(tmp_path):
-    import httpx
-    app=create_app(tmp_path)
+    import httpx,json
+    from backend.tests.test_document_generation import prepared
+    client,base,add,_=prepared(tmp_path);app=client.app
+    r=add('skeleton',{'html':'旧文'})
+    async def request(command,**data):
+        await asyncio.sleep(.2)
+        return {'type':'result','data':{'text':json.dumps({'title':'骨架','sections':[{'heading':'冲突','text':'模型返回'}]}),'usage':None}}
+    app.state.pi_runtime.request=request
     async def scenario():
         async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app),base_url='http://testserver') as c:
-            p=(await c.post('/api/projects',json={'name':'并发'})).json()['id']
-            r=(await c.post(f'/api/projects/{p}/records',json={'kind':'outline','title':'细纲','content':{'html':'旧文'}})).json()
-            path=f'/api/projects/{p}/records/{r["id"]}'
-            task=asyncio.create_task(c.post(f'/api/projects/{p}/tasks',json={'kind':'outline','target_id':r['id'],'input_version':1}))
-            await asyncio.sleep(.1)
+            path=base+'/records/'+r['id']
+            task=asyncio.create_task(c.post(base+'/production-jobs',json={'operation':'document','document_kind':'skeleton','refs':[{'id':r['id'],'version':1}],'submission_id':'concurrent'}))
+            await asyncio.sleep(.05)
             changed=await c.put(path,json={'expected_version':1,'content':{'html':'新文'}})
             assert changed.status_code==200
-            await task
+            assert (await task).status_code==200
             assert (await c.get(path)).json()['content']['html']=='新文'
-            tasks=(await c.get(f'/api/projects/{p}/tasks')).json()
-            assert tasks[0]['status']=='pending'
-            assert tasks[0]['output_id']!=r['id']
+            tasks=(await c.get(base+'/tasks')).json()
+            assert tasks[0]['status']=='succeeded' and tasks[0]['output_id']!=r['id']
+            candidate=(await c.get(base+'/records/'+tasks[0]['output_id'])).json()
+            assert candidate['content']['input_stale'] is True
+            assert (await c.post(base+'/candidates/'+candidate['id']+'/adopt',json={})).status_code==409
     asyncio.run(scenario())
+
 
 def test_external_origin_and_different_host_rejected(client):
     assert client.post('/api/projects',json={'name':'恶意'},headers={'origin':'https://evil.example'}).status_code==403
@@ -132,7 +139,7 @@ def test_gates_ignore_other_batches_and_demo_records(client):
     client.post(f'/api/projects/{p}/text',files={'file':('story.txt','第一章\n原著'.encode(),'text/plain')})
     image=client.post(f'/api/projects/{p}/images',files={'file':('a.png',png(),'image/png')}).json()
     for kind in ['skeleton','outline','style','asset','script','trial']:
-        r=record(client,p,kind,{'batch':1,**({'references':[{'id':image['id'],'version':1}]} if kind=='trial' else {})})
+        r=record(client,p,kind,{'batch':1,**({'style_reference':client.get(f'/api/projects/{p}/style-selection').json()['selection']} if kind=='asset' else {}),**({'references':[{'id':image['id'],'version':1}]} if kind=='trial' else {})})
         client.post(f'/api/projects/{p}/records/{r["id"]}/reviews',json={'version':1,'decision':'approved','note':'人工确认'})
         if kind=='style': client.post(f'/api/projects/{p}/style-selection',json={'record_id':r['id'],'version':1})
     record(client,p,'script',{'batch':2})

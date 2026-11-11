@@ -1,0 +1,5 @@
+.production-continuation{border-top:1px solid var(--line);padding:16px 0 0;margin:16px 0;max-width:72ch;overflow-wrap:anywhere}
+.production-continuation h4{margin:0 0 8px}
+.group-result .production-continuation label{display:flex;flex-direction:row;align-items:flex-start;gap:8px;line-height:1.6;margin:12px 0}
+.production-continuation input[type=checkbox]{flex:0 0 auto;margin:5px 0 0}
+.production-continuation button.primary{--focus-color:var(--surface)}

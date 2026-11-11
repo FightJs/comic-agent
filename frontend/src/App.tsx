@@ -1,6 +1,9 @@
+import { preparationGroup, preparationTabs } from "./preparationNavigation";
+import { Select } from "./Select";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   BookOpen,
+  MessageSquare,
   Layers3,
   FolderOpen,
   Settings2,
@@ -25,6 +28,7 @@ import {
 } from "lucide-react";
 import { api, base, json, type Project, type RecordItem } from "./api";
 import { Empty, ErrorNote, Busy, Drawer } from "./ui";
+import { AgentPanel, type AgentStage } from "./AgentPanel";
 import {
   Original,
   Memory,
@@ -36,12 +40,9 @@ import { Scripts } from "./Production";
 import { Images } from "./Images";
 import { Tasks, Settings, ContextPanel } from "./Auxiliary";
 const prep = [
-  ["original", "小说原著", BookOpen, "导入与阅读，建立故事的唯一来源"],
-  ["memory", "理解与记忆", Network, "查看人物、事件和关系依据"],
-  ["skeleton", "改编骨架", PenLine, "组织全书结构与叙事节奏"],
-  ["outline", "分集细纲", FileText, "把故事推进落实到每一话"],
-  ["style", "画风与代表资产", Palette, "比较视觉方向，确认代表样例"],
-  ["asset", "全面资产与确认", Boxes, "整理全书人物、场景和道具状态"],
+  ["original", "理解与记忆", BookOpen, "从小说原著出发，理解人物、事件和关系"],
+  ["skeleton", "改编与细纲", PenLine, "组织全书骨架，将故事推进落实到每一话"],
+  ["style", "画风与资产", Palette, "比较三版画风，确认后生成并审核全面资产"],
 ] as const;
 const production = [
   ["script", "脚本审核", Clapperboard, "从细纲生成成品脚本，连续审阅并修改选中格"],
@@ -241,6 +242,10 @@ export default function App() {
     setPanel(1);
   };
   useEffect(() => {
+    if (pid && flow === "prep") {
+      localStorage.setItem(`comic-prep-last:${pid}`, stage);
+      localStorage.setItem(`comic-prep-tab:${pid}:${preparationGroup(stage)}`, stage);
+    }
     if (pid)
       localStorage.setItem(
         "comic-view:" + pid,
@@ -249,6 +254,7 @@ export default function App() {
   }, [pid, flow, stage, batch, episode, panel]);
   const navigate = (next: string, nextFlow = flow) => {
     scroll.current[`${pid}/${stage}`] = main.current?.scrollTop || 0;
+    if (nextFlow === "prep") localStorage.setItem(`comic-prep-tab:${pid}:${preparationGroup(next)}`, next);
     setStage(next);
     setFlow(nextFlow);
     requestAnimationFrame(() => {
@@ -280,7 +286,8 @@ export default function App() {
   };
   const project = projects.find((p) => p.id === pid);
   const steps = flow === "prep" ? prep : production;
-  const current = steps.find((s) => s[0] === stage) || steps[0];
+  const activeStage = flow === "prep" ? preparationGroup(stage) : stage;
+  const current = steps.find((s) => s[0] === activeStage) || steps[0];
   const props: WorkspaceProps = { pid, records, onSaved, refresh, run };
   const productionProps = {
     ...props,
@@ -312,25 +319,29 @@ export default function App() {
         <main className="library-content">
           <div className="library-intro">
             <div>
-              <div className="breadcrumb">创作空间</div>
-              <h1>从故事，到每一格。</h1>
-              <p>整理原著与资产，推进制作，让每个画面都有依据。</p>
+              <div className="library-caption"><span className="green-dot" /> 本地创作工作台</div>
+              <h1>创作空间<span>原著、分镜与画面，集中在一处。</span></h1>
             </div>
-            <span className="library-illustration">
-              <BookOpen size={76} strokeWidth={1} />
-              <span>STORY → PANELS</span>
-            </span>
+            <div className="library-route" aria-label="创作流程">
+              <span><BookOpen size={20} strokeWidth={1.5} /><strong>故事</strong><small>原著与改编</small></span>
+              <ChevronRight size={16} />
+              <span><Clapperboard size={20} strokeWidth={1.5} /><strong>分镜</strong><small>脚本与镜头</small></span>
+              <ChevronRight size={16} />
+              <span><ImagesIcon size={20} strokeWidth={1.5} /><strong>画面</strong><small>生成与审阅</small></span>
+            </div>
           </div>
           <div className="library-toolbar">
-            <div className="tabs">
+            <div className="tabs" aria-label="项目分类">
               <button
                 className={!archived ? "selected" : ""}
+                aria-pressed={!archived}
                 onClick={() => setArchived(false)}
               >
                 我的项目
               </button>
               <button
                 className={archived ? "selected" : ""}
+                aria-pressed={archived}
                 onClick={() => setArchived(true)}
               >
                 已归档
@@ -376,12 +387,12 @@ export default function App() {
                 .map((p) => (
                   <div className="project-row" key={p.id}>
                     <button className="project-name" onClick={() => open(p)}>
-                      <span className="project-icon">
-                        <BookOpen size={22} />
+                      <span className="project-icon" aria-hidden="true">
+                        <BookOpen size={22} strokeWidth={1.5} />
                       </span>
                       <div>
                         <strong>{p.name}</strong>
-                        <small>全书前期准备 / 批次制作</small>
+                        <small>打开创作工作区 <ChevronRight size={12} /></small>
                       </div>
                       <ArrowUpRight size={18} />
                     </button>
@@ -421,21 +432,21 @@ export default function App() {
               <strong>批次制作</strong>
               <p>逐格脚本 → 生图包 → 审图与修改</p>
             </div>
-            <div>
+            <div className="library-mode-note">
               <CheckCircle2 size={19} />
-              <strong>真实保存，清晰来源</strong>
-              <p>基础操作可用 · AI 生成明确模拟</p>
+              <strong>安心留在本机</strong>
+              <p>作品与记录本地保存。图谱、文本、单格图像、独立格批次与单图视觉复查可连接模型；前图依赖需采用审核后恢复；可选实图检查与一轮严重剧情返修；其他返修待接入。</p>
             </div>
           </div>
         </main>
         <footer>
-          条漫 Agent · 本地版本 0.1 <span>资料留在本机 · AI 尚未接入</span>
+          条漫 Agent · 本地版本 0.1 <span>资料本地保存 · 图谱可连接模型</span>
         </footer>
         {aux === "settings" && <Settings onClose={() => setAux("")} />}
       </div>
     );
   return (
-    <div className={"app" + (flow === "production" ? " production-app" : "") + (stage === "images" ? " image-mode" : "")}>
+    <div className={"app" + (flow === "production" ? " production-app" : "") + ((stage === "images" || stage === "modify") ? " image-mode" : "") + ((stage === "script" || stage === "package") ? " review-mode" : "")}>
       <aside className="sidebar">
         <button
           className="brand"
@@ -461,7 +472,7 @@ export default function App() {
           项目库
         </button>
         <div className="project-switch">
-          <small>当前项目</small>
+          <small>正在创作</small>
           <strong>{project?.name}</strong>
           <button aria-label="项目选项" onClick={() => setAux("project")}>
             <MoreHorizontal size={18} />
@@ -470,7 +481,8 @@ export default function App() {
         <div className="flow-nav">
           <button
             className={flow === "prep" ? "active" : ""}
-            onClick={() => navigate("original", "prep")}
+            aria-pressed={flow === "prep"}
+            onClick={() => navigate(localStorage.getItem(`comic-prep-last:${pid}`) || "original", "prep")}
           >
             <BookOpen size={18} />
             全书前期准备
@@ -478,6 +490,7 @@ export default function App() {
           </button>
           <button
             className={flow === "production" ? "active" : ""}
+            aria-pressed={flow === "production"}
             onClick={() => navigate("script", "production")}
           >
             <Clapperboard size={18} />
@@ -494,10 +507,13 @@ export default function App() {
               key={id}
               aria-label={`${i+1} ${label}`}
               title={label}
-              className={stage === id ? "active" : ""}
-              onClick={() => navigate(id)}
+              className={activeStage === id ? "active" : ""}
+              aria-current={activeStage === id ? "page" : undefined}
+              onClick={() => {
+                const remembered = localStorage.getItem(`comic-prep-tab:${pid}:${id}`);
+                navigate(flow === "prep" && remembered && preparationGroup(remembered) === id ? remembered : id);
+              }}
             >
-              <span className="step-number">{i + 1}</span>
               <Icon size={16} />
               <span>{label}</span>
               {records.some((r) => r.kind === id) && (
@@ -513,7 +529,7 @@ export default function App() {
               style={connected ? undefined : { background: "var(--error)" }}
             />
             <div>
-              {connected?"本地服务已连接":"本地服务已断开"}<small>AI 能力 · 模拟模式</small>
+              {connected?"本地服务已连接":"本地服务已断开"}<small>单图、视觉与独立格批次可连接 · 前图依赖需审核恢复 · 可选检查/一轮剧情返修</small>
             </div>
           </div>
           <button aria-label="任务中心" title="任务中心" onClick={() => setAux("tasks")}>
@@ -540,6 +556,11 @@ export default function App() {
           </div>
           <div className="actions">
             <span className="local-indicator">本机保存</span>
+            {stage!=="images" && stage!=="modify" && <button onClick={()=>setAux("agent")}><MessageSquare size={16}/>AI 助手</button>}
+            <button onClick={() => setAux("gates")} disabled={!gates}>
+              <CheckCircle2 size={16} />
+              {gates ? `生产条件 · ${gates.reasons?.length || 0}` : "正在读取条件"}
+            </button>
             <button onClick={() => setAux("context")}>
               <PanelRight size={17} />
               上下文资料
@@ -548,26 +569,23 @@ export default function App() {
         </header>
         <main className="workspace" ref={main}>
           <div className="page-heading">
-            <div>
-              <div className="breadcrumb">
-                {flow === "prep" ? "全书前期准备" : "批次制作"} /{" "}
-                {steps.findIndex((s) => s[0] === stage) + 1} of {steps.length}
+            <div className="stage-heading-copy" title={current[3]}>
+              <div className="stage-title-row">
+                <h1>{current[1]}</h1>
+                <div className="stage-position">
+                  <span>{flow === "prep" ? "全书前期准备" : "批次制作"}</span>
+                  <div className="stage-sequence" aria-label={`当前第 ${steps.findIndex((s) => s[0] === activeStage) + 1} 阶段，共 ${steps.length} 阶段`}>
+                    {steps.map(([id]) => <span key={id} className={activeStage === id ? "current" : ""} />)}
+                  </div>
+                </div>
               </div>
-              <h1>{current[1]}</h1>
-              <p>{current[3]}</p>
+              <p title={current[3]}>{current[3]}</p>
             </div>
-            <div className="stage-mark">
-              {(() => {
-                const Icon = current[2];
-                return <Icon size={32} strokeWidth={1.2} />;
-              })()}
-            </div>
-          </div>
           {flow === "production" && (
             <div className="batch-bar">
               <label>
                 批次
-                <select
+                <Select
                   aria-label="当前批次"
                   value={batch}
                   onChange={(e) => {
@@ -591,11 +609,11 @@ export default function App() {
                       </option>
                     ),
                   )}
-                </select>
+                </Select>
               </label>
               <label>
                 当前话
-                <select
+                <Select
                   aria-label="当前话"
                   value={episode}
                   onChange={(e) => {
@@ -608,7 +626,7 @@ export default function App() {
                       第 {(batch - 1) * 10 + i + 1} 话
                     </option>
                   ))}
-                </select>
+                </Select>
               </label>
               <label>
                 格号
@@ -637,14 +655,17 @@ export default function App() {
                 <Plus size={14} />
                 新批次
               </button>
-              <span className="muted">切换阶段保留当前话格</span>
             </div>
           )}
+          </div>
           {!connected && (
             <div className="notice error" role="status">
               本地服务已断开。当前编辑保留在浏览器草稿中，请启动服务后重试保存。
             </div>
           )}
+          {flow === "prep" && <nav className="prep-tabs" aria-label="当前阶段功能">
+            {preparationTabs[preparationGroup(stage)].map(([id, label]) => <button key={id} aria-pressed={stage === id} className={stage === id ? "active" : ""} onClick={() => navigate(id)}>{label}</button>)}
+          </nav>}
           <ErrorNote message={error} />
           {error && <button onClick={() => setError("")}>收起提示</button>}
           {notice && (
@@ -662,7 +683,7 @@ export default function App() {
                 <Documents key={stage} {...props} kind={stage} />
               )}{" "}
               {(stage === "style" || stage === "asset") && (
-                <Assets key={stage} {...props} kind={stage} />
+                <Assets key={stage} {...props} kind={stage} onConfirmed={() => navigate("asset")} />
               )}{" "}
               {(stage === "script" || stage === "package") && (
                 <Scripts
@@ -680,37 +701,7 @@ export default function App() {
               )}
             </div>
           )}
-          {(stage === "asset" || flow === "production") && (
-            <details className="gate-details">
-              <summary>
-                <CheckCircle2 size={16} />
-                正式生产条件 · {gates?.reasons?.length || 0} 项待完成
-                <span>查看缺件</span>
-              </summary>
-              <div>
-                <p>{gates?.reasons?.join("、") || "业务条件已满足"}。</p>
-                <p>真实模型尚未接入；模拟审核不会满足正式放行条件。</p>
-                <div className="actions">
-                  <button onClick={() => void confirmTrial()}>
-                    确认首话试制采用版本
-                  </button>
-                  <span>
-                    已有 {records.filter((r) => r.kind === "trial").length}{" "}
-                    条确认记录
-                  </span>
-                </div>
-                {stage === "script" && (
-                  <button
-                    onClick={() =>
-                      void run("script", undefined, { fail: true })
-                    }
-                  >
-                    演示一次失败任务
-                  </button>
-                )}
-              </div>
-            </details>
-          )}
+
         </main>
         <footer className="statusbar">
           <span>
@@ -719,9 +710,39 @@ export default function App() {
               ? "全书范围"
               : `第 ${episode} 话 · 第 ${Math.max(1, panel)} 格`}
           </span>
-          <span>基础操作真实保存 · AI 结果明确模拟</span>
+          <span>图谱与编辑真实保存 · 模拟创作明确标记</span>
         </footer>
       </div>
+      {aux === "agent" && (
+        <Drawer title={`${current[1]} · AI 助手`} onClose={()=>setAux("")}>
+          <AgentPanel key={pid+stage} pid={pid} onChanged={refresh} onConfigure={()=>setAux("settings")} stage={(stage==="original"||stage==="memory"?"memory":stage==="assets"?"asset":stage) as AgentStage} records={records}/>
+        </Drawer>
+      )}
+      {aux === "gates" && (
+        <Drawer title="正式生产条件" onClose={() => setAux("")}>
+            <p>{gates?.reasons?.join("、") || "业务条件已满足"}。</p>
+            <p>图谱和文本创作可调用配置的模型；模拟依赖与模拟审核不会满足正式放行条件。</p>
+            <div className="actions">
+              <button onClick={() => void confirmTrial()}>
+                确认首话试制采用版本
+              </button>
+              <span>
+                已有 {records.filter((r) => r.kind === "trial").length}{" "}
+                条确认记录
+              </span>
+            </div>
+            {stage === "script" && (
+              <button
+                onClick={() =>
+                  void run("script", undefined, { fail: true })
+                }
+              >
+                演示一次失败任务
+              </button>
+            )}
+
+        </Drawer>
+      )}
       {aux === "tasks" && (
         <Tasks
           pid={pid}
@@ -729,7 +750,7 @@ export default function App() {
           onChanged={() => void refresh()}
         />
       )}{" "}
-      {aux === "settings" && <Settings onClose={() => setAux("")} />}{" "}
+      {aux === "settings" && <Settings pid={pid} onClose={() => setAux("")} />}{" "}
       {aux === "context" && (
         <ContextPanel records={records} onClose={() => setAux("")} />
       )}{" "}

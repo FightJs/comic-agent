@@ -1,0 +1,21 @@
+.skill-manager { min-width:0; overflow-wrap:anywhere; border-bottom:1px solid var(--line); margin-bottom:24px; padding-bottom:24px; }
+.skill-manager h3 { font-size:16px; margin:0 0 8px; }
+.skill-manager > p,.skill-manager > small { line-height:1.7; color:var(--muted); }
+.skill-upload,.skill-search { display:flex; flex-direction:column; align-items:stretch; text-align:left; gap:8px; margin:16px 0 8px; }
+.skill-upload input { width:100%; min-width:0; }
+.skill-list { margin:16px 0; }
+.skill-row { display:flex; gap:12px; align-items:flex-start; padding:14px 0; border-block-start:1px solid var(--line); }
+.skill-choice { flex:1; min-width:0; display:flex; flex-direction:row; align-items:flex-start; gap:10px; text-align:left; }
+.skill-choice input { flex:none; margin-top:4px; }
+.skill-choice > span { display:flex; flex-direction:column; gap:5px; min-width:0; overflow-wrap:anywhere; }
+.skill-choice small { color:var(--muted); }
+.skill-save { display:flex; align-items:center; flex-wrap:wrap; gap:12px; }
+.skill-save small { flex:1; color:var(--muted); min-width:180px; }
+.skill-rule-preview { margin-top:20px; }
+.skill-rule-preview pre { white-space:pre-wrap; overflow-wrap:anywhere; line-height:1.8; max-height:400px; overflow:auto; }
+
+.skill-rule-preview .actions { flex-wrap:wrap; }
+.skill-rule-preview .actions strong { flex:1; min-width:0; white-space:normal; overflow-wrap:anywhere; }
+.skill-rule-preview .actions button { flex:none; }
+.skill-manager .success,.skill-manager .notice { overflow-wrap:anywhere; }
+.skill-dependencies {display:block;overflow-wrap:anywhere;color:var(--muted);font-size:12px;line-height:1.7;}

@@ -90,8 +90,8 @@ def test_image_validation_annotations_and_zip(client):
 
 def test_task_failure_retry_and_mock_result(client):
     p = project(client)
-    r = record(client, p)
-    t = client.post(f'/api/projects/{p}/tasks', json={'kind':'outline', 'target_id':r['id'], 'input_version':1,'fail':True}).json()
+    r = record(client, p,kind='style',content={'prompt':'画风草稿'})
+    t = client.post(f'/api/projects/{p}/tasks', json={'kind':'style', 'target_id':r['id'], 'input_version':1,'fail':True}).json()
     task = client.get(f'/api/projects/{p}/tasks').json()[0]
     assert task['status'] == 'failed'
     assert client.post(f'/api/projects/{p}/tasks/{t["id"]}/retry').status_code == 200

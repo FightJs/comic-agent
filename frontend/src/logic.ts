@@ -9,7 +9,7 @@ export const selectionStillValid = (
   text: string,
 ) => bound.version === version && bound.text === text;
 export const sourceLabel = (source: string) =>
-  ({ mock: "模拟", manual: "人工编辑", import: "人工导入" })[source] || source;
+  ({ ai: "AI生成/修改", mock: "模拟", manual: "人工编辑", import: "人工导入", model: "模型抽取", original: "原著依据", adaptation: "细纲改编", asset: "资产设计" } as Record<string, string>)[source] || source;
 export const filterImages = <
   T extends { source: string; content: Record<string, any> },
 >(

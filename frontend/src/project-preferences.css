@@ -1,0 +1,13 @@
+.project-preferences {padding-block:12px;}
+.project-preferences > p {color:var(--muted);line-height:1.75;}
+.project-preferences > label {display:flex;flex-direction:column;gap:8px;align-items:stretch;}
+.project-preferences textarea {width:100%;min-height:140px;resize:vertical;line-height:1.75;}
+.preference-meta,.preference-actions {display:flex;gap:8px;align-items:center;justify-content:space-between;flex-wrap:wrap;margin-block:12px;}
+.preference-actions {justify-content:flex-start;}
+.preference-meta small,.preference-draft {color:var(--muted);font-size:12px;line-height:1.7;}
+.preference-draft {display:block;margin-top:8px;}
+.preference-saved {margin-block:12px;}
+.preference-saved p {white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.75;}
+.preference-conflict {border:1px solid var(--line);padding:12px;margin-block:12px;}
+.preference-conflict p {margin-top:0;line-height:1.75;}
+.preference-conflict small {display:block;margin-top:8px;}

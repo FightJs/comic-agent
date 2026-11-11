@@ -9,15 +9,17 @@ from typing import Literal
 from urllib.parse import urlparse
 
 import keyring
-from fastapi import FastAPI, HTTPException, UploadFile, File, Form, BackgroundTasks, Request
+from fastapi import FastAPI, HTTPException, UploadFile, File, Form, BackgroundTasks, Request, Query
 from fastapi.responses import FileResponse, Response, JSONResponse
 from fastapi.exceptions import RequestValidationError
 from fastapi.staticfiles import StaticFiles
 from PIL import Image, UnidentifiedImageError
 from pydantic import BaseModel, Field
-from .store import Store, uid, now, dump
+from .store import Store, uid, now, dump, is_primary
 from .simulation import content_for, demo_image
 from .workflow import register_workflow
+from .agent_runtime import PiRuntime
+from .config_packages import ProviderProfile, register_config_packages, write_profiles
 
 
 class MacVault:
@@ -28,6 +30,7 @@ class MacVault:
         return backend
     def get_password(self,*args): return self.backend().get_password(*args)
     def set_password(self,*args): return self.backend().set_password(*args)
+    def delete_password(self,*args): return self.backend().delete_password(*args)
 
 vault = MacVault()
 KINDS = Literal['original','memory','skeleton','outline','style','asset','script','package','image','trial']
@@ -75,17 +78,29 @@ class BatchReviewIn(BaseModel):
     decision: Literal['approved','changes']
     note: str = Field(max_length=10000)
 
-class SettingsIn(BaseModel):
-    url: str = Field(default='',max_length=2000)
-    model: str = Field(default='',max_length=200)
-    purpose: Literal['text','image','vision'] = 'text'
-    secret: str | None = Field(default=None,max_length=10000)
+class SettingsIn(ProviderProfile):
+    pass
 
 
 def create_app(data_dir=None):
     store=Store(data_dir or os.environ.get('COMIC_DATA_DIR',Path(__file__).resolve().parents[1]/'data'))
     app=FastAPI(title='条漫 Agent 本地 API')
     app.state.store=store
+    app.state.provider_secret_get=lambda purpose:vault.get_password('comic-workbench','provider:'+purpose)
+    from .capacity import CapacityManager,register_capacity_api
+    capacity=CapacityManager(store);app.state.capacity=capacity
+    register_capacity_api(app,capacity)
+    from .preferences import register_preferences
+    register_preferences(app,store)
+    runtime=PiRuntime(store.root,capacity=capacity)
+    app.state.pi_runtime=runtime
+    app.router.add_event_handler('startup',runtime.start)
+    app.router.add_event_handler('shutdown',capacity.close)
+    app.router.add_event_handler('shutdown',runtime.close)
+
+    @app.get('/api/agent/health')
+    def agent_health():
+        return {'status':runtime.status,'error':runtime.error,'protocol':1,'provider_verified':False}
 
     @app.exception_handler(RequestValidationError)
     async def validation_error(request:Request,exc:RequestValidationError):
@@ -135,6 +150,8 @@ def create_app(data_dir=None):
             store.project(db,pid)
             rows=db.execute('SELECT id FROM records WHERE project_id=? ORDER BY created',(pid,)).fetchall()
             values=[store.get(db,pid,r['id']) for r in rows]
+            for value in values:
+                if value['kind']=='original': value['content'].pop('text',None)
             return [r for r in values if kind is None or r['kind']==kind]
 
     def validate_content(db,pid,kind,content):
@@ -214,18 +231,50 @@ def create_app(data_dir=None):
     @app.post('/api/projects/{pid}/records/{rid}/adopt')
     def adopt(pid:str,rid:str,body:AdoptIn):
         with store.db() as db:
+            if store.get(db,pid,rid)['content'].get('deleted_by_script'):raise HTTPException(409,'该格已删除，不能重新采用其下游历史图片')
             r=store.get(db,pid,rid,body.version)
             if r['kind'] not in ('image','asset','style'): raise HTTPException(422,'只有图片支持选择采用版本')
             db.execute('UPDATE records SET adopted=? WHERE id=?',(body.version,rid))
             return store.get(db,pid,rid)
 
+    def style_state(db, pid):
+        store.project(db,pid)
+        choice=db.execute("SELECT record_id,version FROM selections WHERE project_id=? AND kind='style'",(pid,)).fetchone()
+        if not choice: return {'status':'unconfirmed','selection':None}
+        r=store.get(db,pid,choice['record_id'])
+        snapshot=store.get(db,pid,choice['record_id'],choice['version'])
+        return {'status':'confirmed' if r['version']==choice['version'] and is_primary(r) else 'stale',
+                'selection':{**dict(choice),'source':snapshot['source']},'title':snapshot['title']}
+
+    @app.get('/api/projects/{pid}/style-selection')
+    def get_style_selection(pid:str):
+        with store.db() as db: return style_state(db,pid)
+
     @app.post('/api/projects/{pid}/style-selection')
     def select_style(pid:str,body:SelectionIn):
         with store.db() as db:
-            r=store.get(db,pid,body.record_id,body.version)
-            if r['kind']!='style' or r['review']!='approved': raise HTTPException(422,'请先审核通过要采用的画风版本')
+            r=store.get(db,pid,body.record_id)
+            if r['version']!=body.version: raise HTTPException(409,'画风版本已变化，请查看最新版本后确认')
+            if r['kind']!='style': raise HTTPException(422,'请选择画风记录')
+            if not is_primary(r):raise HTTPException(409,'请先采用画风候选，再确认当前画风')
+            previous=style_state(db,pid)['selection']
+            chosen={'record_id':body.record_id,'version':body.version,'source':r['source']}
+            if previous!=chosen:
+                for row in db.execute("SELECT id FROM records WHERE project_id=? AND kind='asset'",(pid,)).fetchall():
+                    asset=store.get(db,pid,row['id'])
+                    if asset['review']=='approved':
+                        db.execute('INSERT INTO reviews VALUES(?,?,?,?,?,?,?)',(uid(),asset['id'],asset['version'],'changes','画风选择已变化，请重新确认资产。',asset['source'],now()))
             db.execute("INSERT INTO selections VALUES(?,?,?,?) ON CONFLICT(project_id,kind) DO UPDATE SET record_id=excluded.record_id,version=excluded.version",(pid,'style',body.record_id,body.version))
-            return {'record_id':body.record_id,'version':body.version,'source':r['source']}
+            return style_state(db,pid)
+
+    @app.post('/api/projects/{pid}/records/{rid}/confirm-style')
+    def confirm_asset_style(pid:str,rid:str,body:AdoptIn):
+        with store.db() as db:
+            r=store.get(db,pid,rid)
+            if r['kind']!='asset': raise HTTPException(422,'仅资产可重新确认画风')
+            state=style_state(db,pid)
+            if state['status']!='confirmed': raise HTTPException(409,'请先确认当前画风')
+            return store.save(db,pid,rid,body.version,{**r['content'],'style_reference':state['selection']},source=state['selection']['source'])
 
     @app.get('/api/projects/{pid}/batch-reviews')
     def batch_reviews(pid:str,batch:int):
@@ -260,12 +309,15 @@ def create_app(data_dir=None):
             rows=[store.get(db,pid,r['id']) for r in db.execute('SELECT id FROM records WHERE project_id=?',(pid,))]
             reasons=[]
             for kind,label in [('original','导入小说原著'),('skeleton','全书骨架审核'),('outline','全书细纲审核'),('style','画风审核'),('asset','全面资产审核'),('script','当前批次脚本审核'),('trial','首话试制确认')]:
-                candidates=[r for r in rows if r['kind']==kind and r['source']!='mock' and not r['content'].get('pending_for') and (kind!='script' or r['content'].get('batch',1)==batch)]
+                candidates=[r for r in rows if r['kind']==kind and r['source']!='mock' and is_primary(r) and (kind!='script' or r['content'].get('batch',1)==batch)]
                 if kind=='style':
                     choice=db.execute("SELECT * FROM selections WHERE project_id=? AND kind='style'",(pid,)).fetchone()
                     candidates=[r for r in candidates if choice and r['id']==choice['record_id'] and r['version']==choice['version']]
+                if kind=='asset':
+                    state=style_state(db,pid)
+                    candidates=[r for r in candidates if state['status']=='confirmed' and r['content'].get('style_reference')==state['selection']]
                 if kind=='trial':
-                    images=[r for r in rows if r['kind']=='image' and r['content'].get('episode')==1]
+                    images=[r for r in rows if r['kind']=='image' and is_primary(r) and r['content'].get('episode')==1]
                     expected={(r['id'],r['adopted']) for r in images}
                     candidates=[r for r in candidates if expected and {(ref['id'],ref.get('version')) for ref in r['content'].get('references',[])}==expected and r['review']=='approved']
                 if not candidates or any(r['source']=='mock' or (kind!='original' and r['review']!='approved') for r in candidates): reasons.append(label)
@@ -278,21 +330,13 @@ def create_app(data_dir=None):
         if len(raw)>20*1024*1024: raise HTTPException(413,'TXT 最大 20MB')
         if not (file.filename or '').lower().endswith('.txt'): raise HTTPException(422,'仅支持 TXT 文件')
         if encoding not in ('auto','utf-8-sig','gb18030'): raise HTTPException(422,'请选择 UTF-8 或 GB18030')
-        text=None
-        for codec in (['utf-8-sig','gb18030'] if encoding=='auto' else [encoding]):
-            try:
-                decoded=raw.decode(codec)
-                if '\x00' in decoded or any(ord(x)<32 and x not in '\n\r\t' for x in decoded): continue
-                text=decoded; encoding=codec; break
-            except UnicodeError: pass
-        if text is None: raise HTTPException(422,'无法可靠解码，请明确选择编码后重试')
-        if not text.strip(): raise HTTPException(422,'文件没有正文')
-        chapters=[{'title':m.group().strip(),'offset':m.start()} for m in re.finditer(r'(?m)^\s*第[零〇一二三四五六七八九十百千万两\d]+[章回节卷][^\n]*',text)]
-        if chapters and chapters[0]['offset']>0 and text[:chapters[0]['offset']].strip(): chapters.insert(0,{'title':'前言','offset':0})
+        from .graph_documents import import_document
         with store.db() as db:
-            store.project(db,pid)
-            url=store.file(db,pid,file.filename,raw,'text/plain')
-            return store.add(db,pid,'original',file.filename,{'text':text,'encoding':encoding,'chapters':chapters,'url':url,'size':len(raw)},'import')
+            db.execute('BEGIN IMMEDIATE')
+            document=import_document(store,db,pid,file.filename,raw,encoding)
+            app.state.graph_engine.create_job(db,pid,document['id'])
+            row=db.execute('SELECT record_id FROM documents WHERE id=?',(document['id'],)).fetchone()
+            return store.get(db,pid,row['record_id'])
 
     @app.get('/api/projects/{pid}/files/{fid}')
     def file_response(pid:str,fid:str,download:bool=False):
@@ -322,8 +366,12 @@ def create_app(data_dir=None):
             url=store.file(db,pid,file.filename or '图片.png',raw,mime)
             content={**(old['content'] if old else {}),'url':url,'width':width,'height':height,'filename':file.filename,'issues':[],'checked':False}
             if not old: content.update(batch=batch,episode=episode,panel=panel,category=category,characters='',scene='',state='默认状态')
+            if kind=='style': content.pop('samples',None)
+            if kind=='asset' and not old:
+                state=style_state(db,pid)
+                if state['status']=='confirmed': content['style_reference']=state['selection']
             if old: return store.save(db,pid,record_id,expected_version,content,source='import')
-            return store.add(db,pid,kind,file.filename or '图片',content,'import')
+            return store.add(db,pid,kind,file.filename or '图片',content,'mock' if content.get('style_reference',{}).get('source')=='mock' else 'import')
 
     def image_snapshot(db,pid,rid,version):
         r=store.get(db,pid,rid,version)
@@ -361,6 +409,11 @@ def create_app(data_dir=None):
             db.execute('INSERT INTO annotations VALUES(?,?,?,?) ON CONFLICT(record_id,image_version) DO UPDATE SET version=excluded.version,items=excluded.items',(rid,body.image_version,version+1,dump(body.items)))
             return {'version':version+1,'items':body.items}
 
+    @app.get('/api/projects/{pid}/delivery-readiness')
+    def delivery_readiness(pid:str,episode:int|None=Query(default=None,ge=1),batch:int|None=Query(default=None,ge=1)):
+        from .delivery_readiness import readiness
+        with store.db() as db:return readiness(store,db,pid,episode=episode,batch=batch)
+
     @app.post('/api/projects/{pid}/download')
     def download(pid:str,body:DownloadIn):
         output=io.BytesIO()
@@ -390,9 +443,14 @@ def create_app(data_dir=None):
                 stale=old and payload['input_version']!=current['version']
                 kind=payload['kind']
                 content=old['content'].copy() if old else {'batch':payload['batch'],'episode':payload['episode'],'panel':payload['panel']}
+                if kind=='asset': content['style_reference']=payload['style_reference']
                 if kind in ('image','repair','style','asset'):
                     raw=demo_image(payload['panel']-1)
                     content.update(url=store.file(db,pid,'模拟样例.png',raw,'image/png'),width=640,height=900,filename='模拟样例.png',checked=True,issues=[{'id':uid(),'severity':'minor','text':'模拟复查记录：此图仅用于界面演示，不代表图像质量通过。','basis':'预置流程样例'}],category=content.get('category','人物'),state=content.get('state','示例状态'),characters=content.get('characters','阿青'),scene=content.get('scene','旧院'))
+                    if kind=='style':
+                        content.update(style_option=payload['panel'], representative_set={'characters':['阿青 · 示例'],'scenes':['旧院 · 示例']}, samples=[
+                            {'label':'阿青 · 人物模拟样例','url':content['url']},
+                            {'label':'旧院 · 场景模拟样例','url':store.file(db,pid,'模拟场景.png',demo_image(payload['panel']-1,scene=True),'image/png')}])
                     outkind=old['kind'] if old else ('image' if kind=='repair' else kind)
                 else:
                     content=content_for(kind,content,payload); outkind=kind
@@ -411,7 +469,8 @@ def create_app(data_dir=None):
     def tasks(pid:str,compact:bool=False):
         with store.db() as db:
             store.project(db,pid)
-            result=[{**dict(r),'payload':json.loads(r['payload']),'source':'mock'} for r in db.execute('SELECT * FROM tasks WHERE project_id=? ORDER BY created DESC',(pid,))]
+            pending_pause={r[0] for r in db.execute("SELECT p.target_id FROM pi_pause_requests p JOIN tasks t ON t.id=p.target_id WHERE p.kind='production' AND t.project_id=?",(pid,))}
+            result=[{**dict(r),'pause_requested':r['id'] in pending_pause,'payload':json.loads(r['payload']),'source':json.loads(r['payload']).get('source','mock')} for r in db.execute('SELECT * FROM tasks WHERE project_id=? ORDER BY created DESC',(pid,))]
             if compact:
                 for item in result:
                     for key in ('originals','skeletons','outline','context','assets','conversation'): item['payload'].pop(key,None)
@@ -419,6 +478,7 @@ def create_app(data_dir=None):
 
     @app.post('/api/projects/{pid}/tasks')
     def start_task(pid:str,body:TaskIn,background:BackgroundTasks):
+        if body.kind in ('skeleton','outline'):raise HTTPException(422,'骨架与细纲生成已迁移至正式文本生产，请从文档页生成候选')
         with store.db() as db:
             store.project(db,pid)
             if body.target_id:
@@ -426,6 +486,10 @@ def create_app(data_dir=None):
                 if body.input_version!=r['version']: raise HTTPException(409,'任务输入已变化，请重新发起')
                 if r['kind']=='original': raise HTTPException(422,'任务不能覆盖原著')
             payload=body.model_dump()
+            if body.kind=='asset':
+                state=style_state(db,pid)
+                if state['status']!='confirmed': raise HTTPException(409,'请先确认当前画风版本，再生成全面资产')
+                payload['style_reference']=state['selection']
             if body.kind=='repair':
                 if not body.target_id: raise HTTPException(422,'修改需要指定底图')
                 image=image_snapshot(db,pid,body.target_id,body.base_image_version or body.input_version)
@@ -439,10 +503,18 @@ def create_app(data_dir=None):
     @app.post('/api/projects/{pid}/tasks/{tid}/retry')
     def retry(pid:str,tid:str,background:BackgroundTasks):
         with store.db() as db:
+            db.execute('BEGIN IMMEDIATE')
             row=db.execute('SELECT * FROM tasks WHERE id=? AND project_id=?',(tid,pid)).fetchone()
             if not row: raise HTTPException(404,'任务不存在')
             if row['status'] not in ('failed','interrupted'): raise HTTPException(409,'仅失败或中断任务可重试')
+            if db.execute('SELECT 1 FROM pi_recovery_locks WHERE project_id=? AND owner_id IN (SELECT id FROM production_attempts WHERE task_id=?)',(pid,tid)).fetchone():raise HTTPException(409,'工具结果正在恢复或待核对；请处理原恢复请求，不能普通重试')
             payload=json.loads(row['payload']); payload['fail']=False
+            if payload.get('workflow') and db.execute("SELECT 1 FROM production_attempts WHERE task_id=? AND (status IN ('paused','continued') OR id IN (SELECT child_id FROM production_continuations))",(tid,)).fetchone():raise HTTPException(409,'此任务有额度检查点或续接段，不能用普通重试另开运行；请核对原回执')
+            if not payload.get('workflow') and payload.get('kind') in ('skeleton','outline'):raise HTTPException(409,'旧模拟文档任务不能直接重试为付费生成，请从文档页重新核对输入')
+            if payload.get('workflow') and payload.get('frozen'):
+                for rid,version in payload.get('input_refs',{}).items():
+                    if store.get(db,pid,rid)['version']!=version:raise HTTPException(409,'生产输入已变化，请核对后建立新任务')
+            if payload.get('kind')=='asset' and not payload.get('style_reference'): raise HTTPException(409,'旧任务未绑定画风，请确认画风后重新发起生成')
             if payload.get('target_id') and store.get(db,pid,payload['target_id'])['version']!=payload['input_version']: raise HTTPException(409,'原输入版本已变化，请发起新任务')
             db.execute("UPDATE tasks SET status='queued',payload=?,error='',updated=? WHERE id=?",(dump(payload),now(),tid))
         background.add_task(run_workflow if payload.get("workflow") else run_task,tid)
@@ -461,22 +533,40 @@ def create_app(data_dir=None):
         return value
 
     @app.get('/api/settings')
-    def settings(purpose:Literal['text','image','vision']='text'):
+    def settings(purpose:Literal['text','image','vision','parse']='text'):
         with store.db() as db: return settings_value(db,purpose)
 
     @app.put('/api/settings')
     def save_settings(body:SettingsIn):
-        if body.url and urlparse(body.url).scheme not in ('http','https'): raise HTTPException(422,'服务地址必须使用 http 或 https')
-        if body.secret:
-            try: vault.set_password('comic-workbench','provider:'+body.purpose,body.secret)
-            except Exception: raise HTTPException(503,'密钥无法保存到 macOS 钥匙串；未写入明文，请检查钥匙串授权')
-        with store.db() as db:
-            profiles=settings_profiles(db)
-            profiles[body.purpose]=body.model_dump(exclude={'secret'})
-            db.execute('INSERT INTO settings VALUES(1,?) ON CONFLICT(id) DO UPDATE SET content=excluded.content',(dump(profiles),))
-            return settings_value(db,body.purpose)
+        with app.state.config_lock:
+            write_profiles(store,vault,[body])
+            app.state.config_revision+=1
+            if hasattr(app.state,'graph_engine'): app.state.graph_engine.invalidate_config()
+            with store.db() as db:return settings_value(db,body.purpose)
 
+    register_config_packages(app,store,lambda:vault)
+
+    from .graph import register_graph
+    register_graph(app,store,lambda purpose: vault.get_password('comic-workbench','provider:'+purpose))
+    from .image_provider import register_image_provider
+    register_image_provider(app,store,lambda purpose: vault.get_password('comic-workbench','provider:'+purpose))
+    from .image_jobs import register_image_jobs
+    register_image_jobs(app,store)
+    from .image_batches import register_image_batches
+    register_image_batches(app,store)
+    from .vision_reviews import register_vision_reviews
+    register_vision_reviews(app,store,lambda purpose: vault.get_password('comic-workbench','provider:'+purpose))
+    from .vision_api import register_vision_api
+    register_vision_api(app,store)
     run_workflow = register_workflow(app,store)
+    from .skills import register_skills
+    register_skills(app,store)
+    from .agent import register_agent
+    register_agent(app,store,lambda purpose: vault.get_password('comic-workbench','provider:'+purpose))
+    from .setup_assistant import register_setup_assistant
+    register_setup_assistant(app,store,lambda purpose: vault.get_password('comic-workbench','provider:'+purpose))
+    from .model_capabilities import register_model_capabilities
+    register_model_capabilities(app,store)
 
     frontend=Path(__file__).resolve().parents[1]/'frontend'/'dist'
     if frontend.exists(): app.mount('/',StaticFiles(directory=frontend,html=True),name='frontend')

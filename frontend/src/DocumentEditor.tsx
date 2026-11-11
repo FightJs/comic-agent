@@ -16,7 +16,9 @@ import {
 import { api, base, json, recPath, type RecordItem } from "./api";
 import { Badge, Drawer, ErrorNote, reviewLabel } from "./ui";
 import { useDraft } from "./useDraft";
-import { selectionStillValid } from "./logic";
+import { documentHtml,documentText,withDocumentHtml } from "./documentContent";
+import {captureTextSelection,selectionHtml,type TextSelection} from "./textSelection";
+import {SelectionAssistant} from "./SelectionAssistant";
 
 export function RecordHistory({
   record,
@@ -88,12 +90,7 @@ export function RecordHistory({
             />
           ) : (
             <pre className="text-preview">
-              {version?.content.html
-                ? new DOMParser().parseFromString(
-                    version.content.html,
-                    "text/html",
-                  ).body.textContent
-                : JSON.stringify(version?.content, null, 2)}
+              {version && ['skeleton','outline'].includes(version.kind) ? documentText(version.content) : JSON.stringify(version?.content,null,2)}
             </pre>
           )}
           <label>
@@ -141,26 +138,18 @@ export function DocumentEditor({
   const draft = useDraft(record, onSaved),
     [history, setHistory] = useState(false),
     [chat, setChat] = useState(false),
-    [instruction, setInstruction] = useState(""),
-    [selected, setSelected] = useState<{
-      from: number;
-      to: number;
-      text: string;
-      version: number;
-    } | null>(null),
-    [pending, setPending] = useState(""),
-    [running, setRunning] = useState(false),
+    [selected, setSelected] = useState<TextSelection|null>(null),
+    [selectionError,setSelectionError]=useState(''),
     [search, setSearch] = useState("");
   const alive = useRef(true);
+  const selectionBase=useRef({html:'',version:record.version});
   useEffect(
-    () => () => {
-      alive.current = false;
-    },
+    () => {alive.current=true;return () => {alive.current = false;};},
     [],
   );
   const editor = useEditor({
     extensions: [StarterKit, Highlight.configure({ multicolor: false })],
-    content: draft.content.html || "<p></p>",
+    content: documentHtml(draft.content),
     editorProps: {
       attributes: {
         class: "document-prose",
@@ -170,77 +159,18 @@ export function DocumentEditor({
       },
     },
     onUpdate: ({ editor }) =>
-      draft.setContent((c) => ({ ...c, html: editor.getHTML() })),
+      draft.setContent((c) => withDocumentHtml(c,editor.getHTML())),
   });
   useEffect(() => {
     if (
       editor &&
       !draft.dirty &&
-      editor.getHTML() !== (draft.content.html || "<p></p>")
+      editor.getHTML() !== documentHtml(draft.content)
     )
-      editor.commands.setContent(draft.content.html || "<p></p>", {
+      editor.commands.setContent(documentHtml(draft.content), {
         emitUpdate: false,
       });
   }, [draft.content, editor]);
-  const simulate = async () => {
-    if (!editor || !selected || !instruction.trim()) return;
-    setRunning(true);
-    setPending("");
-    const bound = { ...selected };
-    const originalDoc = editor.getHTML();
-    await new Promise((r) => setTimeout(r, 1000));
-    const replacement = `${bound.text}（模拟修改：${instruction.trim()}）`;
-    const current = editor.state.doc.textBetween(
-      bound.from,
-      Math.min(bound.to, editor.state.doc.content.size),
-      " ",
-    );
-    if (
-      !alive.current ||
-      !selectionStillValid(bound, draft.head.current.version, current) ||
-      editor.getHTML() !== originalDoc
-    ) {
-      const escaped = replacement
-        .replace(/&/g, "&amp;")
-        .replace(/</g, "&lt;")
-        .replace(/>/g, "&gt;");
-      try {
-        const result = await api<RecordItem>(
-          base(record.project_id) + "/records",
-          json("POST", {
-            kind: record.kind,
-            title: "待处理回复 · " + record.title,
-            source: "mock",
-            content: {
-              html: "<p>" + escaped + "</p>",
-              pending_for: record.id,
-              input_version: bound.version,
-              instruction,
-            },
-          }),
-        );
-        onSaved(result);
-      } catch (e) {
-        if (alive.current) draft.flagError((e as Error).message);
-      }
-      if (alive.current) {
-        setPending(replacement);
-        setRunning(false);
-      }
-      return;
-    }
-    draft.markMock();
-    editor
-      .chain()
-      .focus()
-      .insertContentAt(
-        { from: bound.from, to: bound.to },
-        { type: "text", text: replacement, marks: [{ type: "highlight" }] },
-      )
-      .run();
-    setRunning(false);
-    setSelected(null);
-  };
   const searchText = () => {
     if (!editor || !search) return;
     let found = false;
@@ -338,30 +268,25 @@ export function DocumentEditor({
         <button
           onClick={() => {
             if (!editor) return;
-            const { from, to } = editor.state.selection;
-            setSelected(
-              from === to
-                ? null
-                : {
-                    from,
-                    to,
-                    text: editor.state.doc.textBetween(from, to, " "),
-                    version: draft.head.current.version,
-                  },
-            );
+            if(draft.dirty||draft.error){setSelectionError('请先保存或处理文档草稿，再选择正文使用 AI。');return;}
+            const captured=captureTextSelection(editor);
+            if(captured&&captured.text.length>20000){setSelectionError('选段超过20000字符，请缩小范围。');return;}
+            setSelectionError('');setSelected(captured);
+            selectionBase.current={html:editor.getHTML(),version:draft.head.current.version};
             setChat(true);
           }}
         >
           <Sparkles size={15} />
-          选段模拟修改
+          选段 AI 修改
         </button>
       </div>
+      <ErrorNote message={selectionError}/>
       <div className="document-layout">
         <aside className="document-outline">
           <span className="muted">文档目录</span>
           {Array.from(
             new DOMParser()
-              .parseFromString(draft.content.html || "", "text/html")
+              .parseFromString(documentHtml(draft.content), "text/html")
               .querySelectorAll("h1,h2,h3"),
           ).map((h, i) => (
             <button
@@ -378,50 +303,19 @@ export function DocumentEditor({
         </aside>
         <EditorContent editor={editor} />
       </div>
-      {chat && (
-        <Drawer title="选段模拟修改" onClose={() => setChat(false)}>
-          <div className="notice">模拟服务 · 不调用文本模型</div>
-          {selected ? (
-            <>
-              <h3>选中内容</h3>
-              <blockquote>{selected.text}</blockquote>
-              <label>
-                修改要求
-                <textarea
-                  value={instruction}
-                  onChange={(e) => setInstruction(e.target.value)}
-                  placeholder="例如：突出人物犹豫，保留原有情节"
-                />
-              </label>
-              <button
-                className="primary"
-                disabled={running || !instruction.trim()}
-                onClick={() => void simulate()}
-              >
-                {running ? "模拟回复中…" : "模拟修改并替换"}
-              </button>
-              <p className="muted">
-                回复会直接替换并标色；若原文已改变，则保留为待处理回复。
-              </p>
-            </>
-          ) : (
-            <p>请先在正文中选择需要修改的文字，再点击“选段模拟修改”。</p>
-          )}
-          {pending && (
-            <>
-              <div className="notice">
-                原文或版本已变化，未覆盖编辑。以下回复可手动复制使用。
-              </div>
-              <textarea readOnly value={pending} />
-            </>
-          )}
-          <button
-            onClick={() => editor?.chain().selectAll().unsetHighlight().run()}
-          >
-            清除改动底色
-          </button>
-        </Drawer>
-      )}
+      {chat && <SelectionAssistant record={draft.head.current} selection={selected} onClose={()=>setChat(false)} onApply={async proposal=>{
+        if(!editor||draft.dirty||draft.error||editor.getHTML()!==selectionBase.current.html||draft.head.current.version!==proposal.changes[0].version)throw Error('正文、版本或未保存草稿已变化，未采用；请重新选择正文讨论。');
+        const html=selectionHtml(editor,proposal.changes[0].selection,proposal.changes[0].patch.text);
+        editor.setEditable(false);
+        try{
+          const saved=await api<RecordItem>(base(record.project_id)+'/agent/proposals/'+proposal.id+'/apply-selection',json('POST',{expected_version:proposal.changes[0].version,html}));
+          if(!alive.current)return;
+          draft.accept(saved);draft.setContent(saved.content);
+          editor.commands.setContent(documentHtml(saved.content),{emitUpdate:false});
+          selectionBase.current={html:editor.getHTML(),version:saved.version};
+          onSaved(saved);
+        }finally{if(alive.current)editor.setEditable(true);}
+      }}/>}
       {history && (
         <RecordHistory
           record={draft.head.current}

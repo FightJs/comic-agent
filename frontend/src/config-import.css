@@ -1,0 +1,14 @@
+.config-import { border-bottom:1px solid var(--line); padding-bottom:24px; margin-bottom:24px; }
+.config-import h3 { font-size:16px; margin:0 0 8px; }
+.config-import p { line-height:1.7; }
+.config-import > p,.config-import > small { color:var(--muted); }
+.config-import > small { display:block; line-height:1.7; }
+.config-file { display:flex; flex-direction:column; align-items:stretch; gap:8px; text-align:left; margin:16px 0 8px; }
+.config-file input { width:100%; min-width:0; }
+.config-preview { margin:20px 0 0; }
+.config-preview h4 { margin:0 0 12px; font-size:15px; overflow-wrap:anywhere; }
+.config-preview dl > div { display:grid; grid-template-columns:110px minmax(0,1fr); gap:12px; border-top:1px solid var(--line); padding:12px 0; }
+.config-preview dt { color:var(--muted); }
+.config-preview dd { margin:0; display:flex; flex-direction:column; gap:5px; overflow-wrap:anywhere; }
+.config-import pre { white-space:pre-wrap; overflow-wrap:anywhere; font-size:12px; }
+@media(max-width:480px){.config-preview dl > div { grid-template-columns:1fr; gap:5px; }}

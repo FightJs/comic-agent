@@ -1,3 +1,8 @@
+import {ImageDependencies} from "./ImageDependencies";
+import {ImageBatches} from "./ImageBatches";
+import {ImageGeneration} from "./ImageGeneration";
+import { PackageTable } from "./PackageTable";
+import { Select } from "./Select";
 import { useEffect, useState, useRef } from "react";
 import { api, base, json, recPath, RecordItem } from "./api";
 import { Badge, Drawer, Empty, ErrorNote, reviewLabel } from "./ui";
@@ -9,6 +14,7 @@ import {
   CandidateReview,
   Conversation,
   RangeGeneration,
+  GroupResults,
   submitJob,
 } from "./Workflow";
 import {
@@ -159,7 +165,7 @@ function PackageDetail({
       )}
       {tab === "chat" ? (
         <Conversation
-          key={record.id + ":" + record.version}
+          key={record.id}
           pid={props.pid}
           refs={[record]}
           operation="rewrite"
@@ -237,7 +243,7 @@ function PackageDetail({
             </section>
           ))}
           <div className="actions">
-            <select
+            <Select
               aria-label="添加资产"
               value={asset}
               onChange={(e) => setAsset(e.target.value)}
@@ -253,7 +259,7 @@ function PackageDetail({
                     {r.title} · v{r.adopted}
                   </option>
                 ))}
-            </select>
+            </Select>
             <button
               disabled={!asset}
               onClick={() => {
@@ -278,6 +284,7 @@ function PackageDetail({
               绑定采用版本
             </button>
           </div>
+          <ImageDependencies id={record.id} records={props.records} content={d.content} onChange={d.setContent}/>
           <h3>直接提示词拆分</h3>
           {promptFields.map(([k, label]) => (
             <label className="prompt-section" key={k}>
@@ -295,7 +302,7 @@ function PackageDetail({
             </label>
           ))}
           <div className="detail-heading">
-            <h3>最终发送的完整提示词</h3>
+            <h3>{d.content.generation_dependencies?.length||d.content.previous_image_dependencies?.length?"生图包完整提示词":"最终发送的完整提示词"}</h3>
             <span>
               {d.content.prompt_mode === "override"
                 ? "手动覆盖"
@@ -320,6 +327,7 @@ function PackageDetail({
               </button>
             </div>
           )}
+          {!!(d.content.generation_dependencies?.length||d.content.previous_image_dependencies?.length)&&<p className="notice">批次预览会附加固定的前图连续性说明；最终发送文本请在授权预览中核对。修改生图包后需重新预览。</p>}
           <textarea
             aria-label="最终完整提示词"
             className="final-prompt"
@@ -337,7 +345,7 @@ function PackageDetail({
             <summary>执行参数、依赖与检查要求</summary>
             {[
               ["parameters", "执行参数"],
-              ["dependencies", "前图依赖"],
+              ["dependencies", "连续性说明（文字，不添加前图引用）"],
               ["missing", "缺件与检查目标"],
             ].map(([k, label]) => (
               <label key={k}>
@@ -392,10 +400,28 @@ function BoundScript({
 export function Scripts(
   props: ProductionProps & { kind: "script" | "package" },
 ) {
-  const { records, pid, kind, batch, episode, panel } = props;
+  const { records, pid, kind, batch, episode } = props;
+  const [generationResults,setGenerationResults] = useState(false);
+  const [imageBatches,setImageBatches] = useState(false);
   const [query, setQuery] = useViewState(`${pid}:${kind}:query`, ""),
-    [scope, setScope] = useViewState(`${pid}:${kind}:scope`, "episode"),
-    [selected, setSelected] = useState<string[]>([]),
+    [scope, setScope] = useViewState(
+      `${pid}:${kind === "package" ? "package:table-scope" : "script:scope"}`,
+      kind === "package" ? "range" : "episode",
+    ),
+    [rangeStart, setRangeStart] = useViewState(
+      `${pid}:package:range-start`,
+      Math.floor((episode - 1) / 5) * 5 + 1,
+    ),
+    [rangeEnd, setRangeEnd] = useViewState(
+      `${pid}:package:range-end`,
+      Math.floor((episode - 1) / 5) * 5 + 5,
+    ),
+    [packageStatus, setPackageStatus] = useState("all"),
+    [selected, setSelected] = useViewState<string[]>(
+      `${pid}:${kind}:table-selection`,
+      [],
+    ),
+    [imageBasis,setImageBasis]=useState<RecordItem|null>(null),
     [range, setRange] = useState(false),
     [detail, setDetail] = useState<RecordItem | null>(null),
     [discuss, setDiscuss] = useState(false),
@@ -404,6 +430,8 @@ export function Scripts(
     [notice, setNotice] = useState(""),
     [busy, setBusy] = useState(false);
   const tableRef = useRef<HTMLDivElement>(null);
+  const reviewBodyRef=useRef<HTMLDivElement>(null);
+  const packageOrigin=useRef<string|null>(null);
   const scrollKey = `comic-script-scroll:${pid}:${kind}`;
   useEffect(() => {
     let value;
@@ -418,12 +446,30 @@ export function Scripts(
     }
   }, []);
   const all = records.filter((r) => r.kind === kind && primaryRecord(r));
+  const inScope = (r: RecordItem) =>
+    scope === "range"
+      ? r.content.episode >= rangeStart && r.content.episode <= rangeEnd
+      : scope === "all" || scope === "batch"
+        ? scope === "all" || r.content.batch === batch
+        : r.content.episode === episode;
   const rows = all
     .filter(
       (r) =>
-        (scope === "all" || scope === "batch"
-          ? scope === "all" || r.content.batch === batch
-          : r.content.episode === episode) &&
+        inScope(r) &&
+        (kind !== "package" ||
+          packageStatus === "all" ||
+          (packageStatus === "missing" && !r.content.prompt?.trim()) ||
+          (packageStatus === "candidate" &&
+            records.some(
+              (x) =>
+                x.content.candidate_for === r.id && !x.content.adopted_into && !x.content.rejected,
+            )) ||
+          (packageStatus === "stale" &&
+            records.some(
+              (x) =>
+                x.id === r.content.script_id &&
+                x.version !== r.content.script_version,
+            ))) &&
         (!query ||
           Object.values(r.content).join(" ").includes(query) ||
           String(r.content.panel) === query),
@@ -433,22 +479,10 @@ export function Scripts(
         a.content.episode - b.content.episode ||
         a.content.panel - b.content.panel,
     );
-  const current =
-    rows.find(
-      (r) => r.content.episode === episode && r.content.panel === panel,
-    ) || rows[0];
-  useEffect(() => {
-    if (
-      kind === "package" &&
-      current &&
-      (current.content.episode !== episode || current.content.panel !== panel)
-    )
-      props.onLocation(current.content.episode, current.content.panel);
-  }, [kind, current?.id, episode, panel]);
   const picked = all.filter((r) => selected.includes(r.id));
   const candidates = (r: RecordItem) =>
     records.filter(
-      (x) => x.content.candidate_for === r.id && !x.content.adopted_into,
+      (x) => x.content.candidate_for === r.id && !x.content.adopted_into && !x.content.rejected,
     );
   const toggle = (id: string) =>
     setSelected((s) =>
@@ -467,21 +501,70 @@ export function Scripts(
     }
   };
   return (
-    <div className="production-review">
+    <div className={`production-review ${kind}-review`}>
+      <div className="actions"><button onClick={()=>setGenerationResults(true)}>查看生成候选</button>{kind==="package"&&<button disabled={busy} onClick={()=>setImageBatches(true)}>批量图像任务</button>}</div>
+      {generationResults && <GroupResults pid={pid} refresh={props.refresh} onClose={()=>setGenerationResults(false)}/>}
       <div className="review-toolbar">
         <div className="actions">
-          <select
-            aria-label="脚本显示范围"
+          <Select
+            aria-label={kind === "package" ? "生图包显示范围" : "脚本显示范围"}
             value={scope}
             onChange={(e) => {
               setScope(e.target.value);
               setSelected([]);
             }}
           >
+            {kind === "package" && <option value="range">指定话范围</option>}
             <option value="episode">当前话</option>
             <option value="batch">当前10话</option>
             <option value="all">全项目</option>
-          </select>
+          </Select>
+          {kind === "package" && scope === "range" && (
+            <div className="package-range-controls">
+              <label>
+                起始话
+                <input
+                  type="number"
+                  min={1}
+                  value={rangeStart}
+                  onChange={(e) => {
+                    const start = Math.max(1, +e.target.value);
+                    setRangeStart(start);
+                    setRangeEnd(start + 4);
+                    setSelected([]);
+                  }}
+                />
+              </label>
+              <span>—</span>
+              <label>
+                结束话
+                <input
+                  type="number"
+                  min={rangeStart}
+                  value={rangeEnd}
+                  onChange={(e) => {
+                    setRangeEnd(Math.max(rangeStart, +e.target.value));
+                    setSelected([]);
+                  }}
+                />
+              </label>
+            </div>
+          )}
+          {kind === "package" && (
+            <Select
+              aria-label="生图包状态"
+              value={packageStatus}
+              onChange={(e) => {
+                setPackageStatus(e.target.value);
+                setSelected([]);
+              }}
+            >
+              <option value="all">全部状态</option>
+              <option value="missing">缺少提示词</option>
+              <option value="candidate">有修改候选</option>
+              <option value="stale">脚本已更新</option>
+            </Select>
+          )}
           <input
             aria-label="查找话格内容"
             placeholder="查找角色、场景、格号或内容"
@@ -503,25 +586,36 @@ export function Scripts(
                     (r) =>
                       r.kind === "script" &&
                       primaryRecord(r) &&
-                      r.content.episode === episode,
+                      inScope(r) &&
+                      !all.some(
+                        (p) =>
+                          p.content.episode === r.content.episode &&
+                          p.content.panel === r.content.panel,
+                      ),
                   );
                   if (!scripts.length)
-                    throw Error("本话还没有脚本，请先生成并审核");
+                    throw Error(
+                      "当前范围没有待补齐的生图包；已有包可选中后讨论修改。",
+                    );
                   await submitJob(pid, "package", scripts);
-                  setNotice("本话生图包任务已提交，已有包将产生候选");
+                  setNotice(`已提交范围内 ${scripts.length} 格缺失生图包`);
                 })
               }
             >
-              根据本话脚本生成生图包
+              补齐范围内生图包
             </button>
           )}
         </div>
       </div>
       <ErrorNote message={error} />
       {notice && <div className="notice">{notice}</div>}
-      {selected.length > 0 && (
+      {picked.length > 0 && (
         <div className="selection-bar">
-          <strong>已选 {picked.length} 格</strong>
+          <strong>
+            已选 {picked.length} 格
+            {picked.some((r) => !rows.some((x) => x.id === r.id)) &&
+              `（${picked.filter((r) => !rows.some((x) => x.id === r.id)).length} 格不在当前筛选中）`}
+          </strong>
           <button onClick={() => setSelected([])}>清空选择</button>
           {kind === "script" && (
             <button
@@ -547,6 +641,8 @@ export function Scripts(
             </button>
           )}
           <button onClick={() => setDiscuss(true)}>讨论并修改选中格</button>
+          {kind==="package"&&<><button disabled={busy} onClick={()=>setImageBatches(true)}>{`批量图像预览（${picked.length}格）`}</button></>}
+          {kind==="package"&&<button className="primary" disabled={picked.length!==1||busy} onClick={()=>setImageBasis(picked[0])}>{picked.length===1?"模型生图（单格预览）":"模型生图 · 请只选1格"}</button>}
           {kind === "script" ? (
             <button
               disabled={busy}
@@ -578,10 +674,11 @@ export function Scripts(
           )}
         </div>
       )}
+      <div ref={reviewBodyRef} className="review-body" hidden={!rows.length}>
       {kind === "script" ? (
         <>
           <div className="table-guidance">
-            <span>完整成品脚本 · 横向滚动查看全部11列</span>
+            <span>共 {rows.length} 格 · 横向滚动查看完整脚本11列</span>
             <span>点击格号放大阅读，勾选后审核或修改</span>
           </div>
           <div
@@ -644,54 +741,43 @@ export function Scripts(
           </div>
         </>
       ) : (
-        <div className="package-layout">
-          <nav className="panel-rail" aria-label="生图包话格">
-            {rows.map((r) => (
-              <div key={r.id} className={current?.id === r.id ? "active" : ""}>
-                <input
-                  aria-label={`选择第${r.content.episode}话第${r.content.panel}格`}
-                  type="checkbox"
-                  checked={selected.includes(r.id)}
-                  onChange={() => toggle(r.id)}
-                />
-                <button
-                  onClick={() =>
-                    props.onLocation(r.content.episode, r.content.panel)
-                  }
-                >
-                  <strong>
-                    {r.content.episode}话 / {r.content.panel}格
-                  </strong>
-                  <small>{r.content.scene || "场景未标注"}</small>
-                  <span>
-                    v{r.version} ·{" "}
-                    {r.content.prompt?.trim() ? "提示词已备" : "缺少提示词"}
-                  </span>
-                </button>
-                {candidates(r).length > 0 && (
-                  <button onClick={() => setCompare(r)}>
-                    候选 {candidates(r).length}
-                  </button>
-                )}
-              </div>
-            ))}
-          </nav>
-          {current && (
-            <PackageDetail key={current.id} {...props} record={current} />
-          )}
-        </div>
+        <PackageTable
+          storageKey={`comic-package-table:${pid}`}
+          rows={rows}
+          records={records}
+          selected={selected}
+          setSelected={setSelected}
+          open={(r) => {
+            packageOrigin.current=r.id;
+            props.onLocation(r.content.episode, r.content.panel);
+            setDetail(r);
+          }}
+          compare={setCompare}
+        />
       )}
+      </div>
       {!rows.length && (
         <Empty
           title={
-            kind === "script" ? "从细纲开始生成成品脚本" : "本范围尚无生图包"
+            all.length
+              ? "当前条件下没有匹配的话格"
+              : kind === "script" ? "从细纲开始生成成品脚本" : "本范围尚无生图包"
           }
+          action={all.length > 0 && <button onClick={() => {
+            setQuery("");
+            setPackageStatus("all");
+            setScope("all");
+          }}>清除筛选，查看全部话</button>}
         >
-          {kind === "script"
-            ? "选定起止话，生成后在这里连续审阅；无需逐格手工创建。"
-            : "先在脚本审核中选择话格，再生成对应生图包。"}
+          {all.length
+            ? "换个关键词、话范围或状态，或清除筛选查看全部话。"
+            : kind === "script"
+              ? "选定起止话，生成后在这里连续审阅；无需逐格手工创建。"
+              : "先在脚本审核中选择话格，再生成对应生图包。"}
         </Empty>
       )}
+      {imageBatches&&<ImageBatches key={pid} pid={pid} packages={picked} records={records} refresh={props.refresh} onClose={()=>setImageBatches(false)}/>}
+      {imageBasis&&<ImageGeneration key={imageBasis.id+":"+imageBasis.version} pid={pid} kind="image" basis={imageBasis} records={records} refresh={props.refresh} onClose={()=>setImageBasis(null)}/>}
       {range && (
         <RangeGeneration
           pid={pid}
@@ -700,7 +786,52 @@ export function Scripts(
           onClose={() => setRange(false)}
         />
       )}{" "}
-      {detail && (
+      {detail && kind === "package" && (
+        <Drawer
+          title={`第${detail.content.episode}话 · 第${detail.content.panel}格生图包`}
+          wide
+          onClose={() => {
+            const origin=packageOrigin.current,current=detail.id;
+            setDetail(null);
+            requestAnimationFrame(()=>{
+              const buttons=Array.from(reviewBodyRef.current?.querySelectorAll<HTMLButtonElement>('button[data-package-open]')||[]);
+              (buttons.find(b=>b.dataset.packageOpen===origin)||buttons.find(b=>b.dataset.packageOpen===current))?.focus();
+            });
+          }}
+        >
+          <div className="package-detail-nav">
+            <button
+              disabled={rows.findIndex((r) => r.id === detail.id) <= 0}
+              onClick={() => {
+                const r = rows[rows.findIndex((r) => r.id === detail.id) - 1];
+                setDetail(r);
+                props.onLocation(r.content.episode, r.content.panel);
+              }}
+            >
+              上一格
+            </button>
+            <span>关闭后返回原表格位置与选择</span>
+            <button
+              disabled={
+                rows.findIndex((r) => r.id === detail.id) >= rows.length - 1
+              }
+              onClick={() => {
+                const r = rows[rows.findIndex((r) => r.id === detail.id) + 1];
+                setDetail(r);
+                props.onLocation(r.content.episode, r.content.panel);
+              }}
+            >
+              下一格
+            </button>
+          </div>
+          <PackageDetail
+            key={detail.id}
+            {...props}
+            record={records.find((r) => r.id === detail.id) || detail}
+          />
+        </Drawer>
+      )}
+      {detail && kind === "script" && (
         <ScriptDetail
           key={detail.id}
           record={records.find((r) => r.id === detail.id) || detail}
@@ -714,7 +845,7 @@ export function Scripts(
           onClose={() => setDiscuss(false)}
         >
           <Conversation
-            key={picked.map((r) => r.id + ":" + r.version).join(",")}
+            key={picked.map((r) => r.id).sort().join(",")}
             pid={pid}
             refs={picked}
             operation="rewrite"
@@ -757,10 +888,10 @@ function ScriptRows({
     <>
       {first && (
         <tr className="episode-heading">
-          <th colSpan={13}>
+          <th colSpan={13}><div className="episode-heading-content">
             第{r.content.episode}话 ·{" "}
             {r.content.episode_title || "话标题未标注"}
-            <span>原著范围：{r.content.source_range || "未标注"}</span>
+            <span>原著范围：{r.content.source_range || "未标注"}</span></div>
           </th>
         </tr>
       )}

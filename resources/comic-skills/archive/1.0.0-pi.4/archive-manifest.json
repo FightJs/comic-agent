@@ -1,0 +1,26 @@
+{
+  "format": "comic-skill-byte-archive/v1",
+  "version": "1.0.0-pi.4",
+  "files": [
+    {
+      "path": "comic-image-review.json",
+      "sha256": "3c735f341b05a60fff3b855bbbfe547c147387478b8abf6bf47cdf813445fce0"
+    },
+    {
+      "path": "comic-panel-generation.json",
+      "sha256": "e6037da1b5679b5aecb84b10ffebecd0ee9b534cb3fb5c611686b8362579dc56"
+    },
+    {
+      "path": "comic-preproduction.json",
+      "sha256": "2bbdaaa6978a1ce0921c04398e6ea9e9bf60111aaf4ef93125361ec1c0fbf9a9"
+    },
+    {
+      "path": "comic-shot-design.json",
+      "sha256": "04e70a7c54fc266cc016567a1bc83359b3d5e83c65a5a5a8ed64aba28e48bf14"
+    },
+    {
+      "path": "comic-visual-assets.json",
+      "sha256": "4fdb87657a9c343453060aa063beaf8957f5de9f50eb28dfacc21f98b7e34ded"
+    }
+  ]
+}

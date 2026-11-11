@@ -14,6 +14,9 @@ def now(): return datetime.now(timezone.utc).isoformat()
 
 def dump(value): return json.dumps(value, ensure_ascii=False)
 
+def is_primary(record):
+    return record['adopted']>0 and not any(record['content'].get(k) for k in ('candidate_for','creation_candidate','pending_for','rejected','adopted_into','deleted_by_script'))
+
 
 class Store:
     def __init__(self, root):
@@ -35,6 +38,7 @@ class Store:
             CREATE INDEX IF NOT EXISTS tasks_project ON tasks(project_id,created);
             CREATE TABLE IF NOT EXISTS batch_reviews(id TEXT PRIMARY KEY,project_id TEXT,batch INTEGER,records TEXT,decision TEXT,note TEXT,created TEXT);
             CREATE TABLE IF NOT EXISTS selections(project_id TEXT,kind TEXT,record_id TEXT,version INTEGER,PRIMARY KEY(project_id,kind));
+            CREATE TABLE IF NOT EXISTS project_preferences(project_id TEXT PRIMARY KEY,revision INTEGER NOT NULL,text TEXT NOT NULL);
             CREATE TABLE IF NOT EXISTS settings(id INTEGER PRIMARY KEY CHECK(id=1),content TEXT);
             ''')
             db.execute("UPDATE tasks SET status='interrupted', error='应用重启，任务已中断；可手动重试' WHERE status IN ('queued','running')")
@@ -79,8 +83,10 @@ class Store:
 
     def save(self, db, pid, rid, expected, content, title=None, source='manual'):
         old = self.get(db,pid,rid)
+        if old['content'].get('deleted_by_script'): raise HTTPException(409,'此内容已随脚本删除撤下；历史只读，请新建话格')
         if old['version'] != expected: raise HTTPException(409, '版本已更新。当前编辑已保留，请比较后重新保存。')
-        source = 'mock' if 'mock' in (old['source'],source) else old['source'] if old['source']=='import' else source
+        keep_import=old['source']=='import' and (old['kind'] not in ('image','asset','style') or old['content'].get('url')==content.get('url'))
+        source = 'mock' if 'mock' in (old['source'],source) else 'import' if keep_import else source
         stamp, version = now(), expected+1
         changed = db.execute('UPDATE records SET version=?,title=?,updated=? WHERE id=? AND version=?', (version,title or old['title'],stamp,rid,expected))
         if not changed.rowcount: raise HTTPException(409,'版本冲突')
@@ -91,7 +97,9 @@ class Store:
                 db.execute('INSERT INTO annotations VALUES(?,?,?,?)',(rid,version,annotation['version'],annotation['items']))
 
         db.execute('UPDATE projects SET updated=? WHERE id=?',(stamp,pid))
-        return self.get(db,pid,rid)
+        result=self.get(db,pid,rid)
+        if hasattr(self,'graph_record_changed'): self.graph_record_changed(db,pid,result)
+        return result
 
     def file(self, db, pid, name, data, mime):
         fid = uid()

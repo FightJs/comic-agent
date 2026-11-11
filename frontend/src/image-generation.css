@@ -1,0 +1,18 @@
+.image-generation { display:grid; gap:16px; min-width:0; }
+.image-generation-form { display:grid; gap:16px; }
+.image-generation dl { display:grid; grid-template-columns:100px minmax(0,1fr); gap:8px; }
+.image-generation dd { margin:0; overflow-wrap:anywhere; }
+.image-generation pre { font:inherit; white-space:pre-wrap; overflow-wrap:anywhere; max-height:280px; overflow:auto; padding:12px; background:var(--sidebar); }
+.image-reference { display:flex; align-items:center; gap:8px; flex-wrap:wrap; padding-block:8px; }
+.image-generation input[type=checkbox] { width:auto; }
+.image-job-result { display:block; max-width:100%; max-height:420px; margin:auto; object-fit:contain; }
+.image-generation figure { margin:16px 0; }
+.image-generation figcaption { margin-top:8px; color:var(--muted); font-size:12px; }
+.image-job-history-row { display:block; text-align:left; width:100%; margin-top:8px; white-space:normal; overflow-wrap:anywhere; }
+.image-job-detail > .actions { margin-block:16px; }
+.image-generation { overflow-wrap:anywhere; }
+.image-generation > * { min-width:0; }
+.image-job-detail h3 { overflow-wrap:anywhere; }
+
+.image-generation label.image-confirmation { display:flex; align-items:flex-start; gap:8px; }
+.image-confirmation input[type=checkbox] { flex:0 0 auto; margin-top:4px; }

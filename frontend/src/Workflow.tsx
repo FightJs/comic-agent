@@ -1,3 +1,9 @@
+import {ToolReceiptRecovery,needsToolReceiptRecovery} from './ToolReceiptRecovery';
+import {PauseToCheckpoint} from './PauseToCheckpoint';
+import {ProductionContinuation} from "./ProductionContinuation";
+import {AgentPanel} from "./AgentPanel";
+import { documentText } from "./documentContent";
+import { Select } from "./Select";
 import { useEffect, useState, useRef } from "react";
 import { api, base, json, RecordItem } from "./api";
 import { Drawer, ErrorNote, Badge } from "./ui";
@@ -5,6 +11,8 @@ import {
   parseOutline,
   OutlineEntry,
   scriptFields,
+  promptFields,
+  primaryRecord,
   clearSubmittedMessage,
 } from "./workflowLogic";
 import { useViewState } from "./useViewState";
@@ -32,20 +40,22 @@ export async function submitJob(
   );
 }
 export function RangeGeneration({
+  initialOutlineId,
   pid,
   records,
   onClose,
   refresh,
 }: {
   pid: string;
+  initialOutlineId?: string;
   records: RecordItem[];
   onClose: () => void;
   refresh: () => Promise<void>;
 }) {
   const outlines = records.filter(
-    (r) => r.kind === "outline" && !r.content.pending_for,
+    (r) => r.kind === "outline" && primaryRecord(r),
   );
-  const [id, setId] = useState(outlines.at(-1)?.id || "");
+  const [id, setId] = useState(initialOutlineId || outlines.at(-1)?.id || "");
   const outline = outlines.find((r) => r.id === id);
   const [entries, setEntries] = useState<OutlineEntry[]>([]),
     [index, setIndex] = useState<RecordItem | null>(null),
@@ -55,6 +65,7 @@ export function RangeGeneration({
     [error, setError] = useState(""),
     [busy, setBusy] = useState(false),
     [notice, setNotice] = useState("");
+  const [results,setResults] = useState(false);
   const token = useRef(crypto.randomUUID());
   useEffect(() => {
     if (!outline) return;
@@ -83,6 +94,10 @@ export function RangeGeneration({
   }, [id]);
   const save = async () => {
     if (!outline) throw Error("请先建立细纲");
+    const skeleton = records.filter(r => r.kind === "skeleton").at(-1);
+    for (const input of [outline, skeleton]) {
+      if (input && localStorage.getItem(`comic-draft:${pid}:${input.id}`)) throw Error("骨架或所选细纲仍有未保存编辑，请保存成功后再生成脚本。");
+    }
     const r = await api<RecordItem>(
       base(pid) + "/outline-index/" + id,
       json("PUT", {
@@ -95,6 +110,7 @@ export function RangeGeneration({
     return r;
   };
   return (
+    <>
     <Drawer title="从细纲生成完整逐格脚本" onClose={onClose}>
       <p>
         选择原著对应的细纲版本，核对话号和段落，再指定起止话。已有脚本请使用选格修改。
@@ -103,13 +119,13 @@ export function RangeGeneration({
       {notice && <div className="notice">{notice}</div>}
       <label>
         细纲版本
-        <select value={id} onChange={(e) => setId(e.target.value)}>
+        <Select value={id} onChange={(e) => setId(e.target.value)}>
           {outlines.map((r) => (
             <option key={r.id} value={r.id}>
               {r.title} · v{r.version}
             </option>
           ))}
-        </select>
+        </Select>
       </label>
       {!outlines.length && <p>请先到全书前期建立细纲。</p>}
       <div className="range-controls">
@@ -245,7 +261,7 @@ export function RangeGeneration({
         />
       </label>
       <p className="notice">
-        模拟将每话返回3格结构样例，不代表真实成品质量。输入会冻结原著、骨架和所选细纲版本。
+        将调用已配置的文本模型，按实际输出生成格数。输入冻结原著、骨架、细纲和流程版本；结果需逐格核对采用。
       </p>
       <div className="actions">
         <button
@@ -287,7 +303,7 @@ export function RangeGeneration({
                 token.current,
               );
               await refresh();
-              onClose();
+              setResults(true);
             } catch (e) {
               setError((e as Error).message);
             } finally {
@@ -295,10 +311,12 @@ export function RangeGeneration({
             }
           }}
         >
-          {busy ? "正在提交…" : `模拟生成第 ${start}–${end} 话`}
+          {busy ? "正在提交…" : `生成第 ${start}–${end} 话候选`}
         </button>
       </div>
     </Drawer>
+    {results && <GroupResults pid={pid} groups={[token.current]} refresh={refresh} onClose={() => {setResults(false);onClose();}}/>}
+    </>
   );
 }
 export function CandidateReview({
@@ -318,7 +336,7 @@ export function CandidateReview({
   return (
     <Drawer title="比较修改候选" onClose={onClose}>
       <ErrorNote message={error} />
-      <select
+      <Select
         aria-label="候选结果"
         value={chosen}
         onChange={(e) => setChosen(e.target.value)}
@@ -329,7 +347,7 @@ export function CandidateReview({
             {r.content.adopted_into ? "已采用" : ""}
           </option>
         ))}
-      </select>
+      </Select>
       <p>
         原稿 v{record.version}；候选基于 v{candidate?.content.input_version}
         。采用后旧稿仍保留。
@@ -393,9 +411,13 @@ export function CandidateReview({
     </Drawer>
   );
 }
-export function Conversation({
+export function Conversation(props:Parameters<typeof ConversationBody>[0]) {
+  const scope=props.refs.map(r=>r.id+(props.operation==='repair'?":"+r.version:"")).sort().join(",");
+  return <ConversationBody key={props.pid+"/"+props.operation+"/"+scope} {...props}/>;
+}
+function ConversationBody({
   pid,
-  refs,
+  refs: currentRefs,
   operation,
   refresh,
   annotationsReady = true,
@@ -408,6 +430,9 @@ export function Conversation({
   annotationsReady?: boolean;
   annotationRevision?: string;
 }) {
+  const [openedRefs] = useState(currentRefs);
+  const refs = operation === 'rewrite' ? openedRefs : currentRefs;
+  const stale = operation === 'rewrite' && refs.some(ref => currentRefs.find(r => r.id === ref.id)?.version !== ref.version);
   const key = refs
     .map((r) => r.id + ":" + r.version)
     .sort()
@@ -423,6 +448,7 @@ export function Conversation({
       "per-item:" + pid + key,
       {},
     );
+  const [planRuns,setPlanRuns]=useViewState<string[]>("plan-runs:"+pid+key,[]);
   const [annotationRefresh, setAnnotationRefresh] = useState(0);
   const [annotationPreview, setAnnotationPreview] = useState<
     Record<string, { version: number; items: any[] }>
@@ -436,15 +462,7 @@ export function Conversation({
         .join(","),
     [],
   );
-  const [showResults, setShowResults] = useViewState(
-    "result-open:" +
-      pid +
-      refs
-        .map((r) => r.id)
-        .sort()
-        .join(","),
-    false,
-  );
+  const [showResults, setShowResults] = useState(false);
   useEffect(() => {
     if (operation !== "repair") return;
     let alive = true;
@@ -487,8 +505,8 @@ export function Conversation({
           .map((v: any) => v.id + ":" + v.version)
           .sort()
           .join(",") === key;
-      setChat(matching.find(same) || null);
-      setHistoryChats(matching.filter((r) => !same(r)));
+      setChat(operation==="rewrite"?null:matching.find(same) || null);
+      setHistoryChats(operation==="rewrite"?matching:matching.filter((r) => !same(r)));
     });
   useEffect(() => {
     load().catch((e) => setError(e.message));
@@ -497,9 +515,10 @@ export function Conversation({
     <section className="conversation">
       <header>
         <h3>{refs.length > 1 ? `${refs.length} 格共同修改` : "批注与对话"}</h3>
-        <span className="muted">讨论后再生成 · 明确模拟</span>
+        <span className="muted">{operation==="rewrite"?"Pi 讨论 · 明确加入方案后再生成":"图片讨论与返修仍为模拟"}</span>
       </header>
       <ErrorNote message={error} />
+      {stale && <p className="notice" role="status">底稿已有新版本，当前讨论、暂停记录和输入仍绑定打开时的版本。请保留所需意见，关闭后重新打开以使用新底稿；当前不能按旧方案生成。</p>}
       {error && (
         <button
           onClick={() => {
@@ -549,7 +568,12 @@ export function Conversation({
           ))}
         </details>
       )}
-      <div className="chat-messages">
+      {operation==='rewrite'?<AgentPanel key={key} pid={pid} stage={refs[0]?.kind==='package'?'package':'script'} records={currentRefs} boundRefs={refs.map(r=>({id:r.id,version:r.version}))} onChanged={refresh} onUseReply={reply=>{
+        if(planRuns.includes(reply.id)){setNotice('此回复已加入方案；可直接编辑方案。');return;}
+        const next=[plan,reply.reply].filter(Boolean).join('\n');
+        if(next.length>20000){setError('加入后超过20000字，请先精简方案或自行摘录建议。');return;}
+        setPlan(next);setPlanRuns([...planRuns,reply.id]);setNotice('已加入生成方案，尚未启动生成。');
+      }}/>:<><div className="chat-messages">
         {!chat && (
           <p className="muted">
             先描述希望如何修改，可以讨论和补充。发送消息不会启动生成。
@@ -595,9 +619,10 @@ export function Conversation({
         }}
       >
         发送讨论消息
-      </button>
+      </button></>}
       <div className="generation-plan">
         <h4>本次修改方案</h4>
+        {operation==='rewrite'&&planRuns.length>0&&<p className="muted">已引用 {planRuns.length} 条完成的AI回复；生成时核对项目和话格版本。<button onClick={()=>{setPlan('');setPlanRuns([]);setNotice('已清空方案和AI引用。');}}>清空方案及AI引用</button></p>}
         {chat && (
           <button
             onClick={() =>
@@ -618,44 +643,47 @@ export function Conversation({
             placeholder="可从讨论整理或直接填写；只有下方按钮会启动生成"
           />
         </label>
-        {refs.map((r) => (
-          <details key={r.id}>
-            <summary>
-              第{r.content.episode}话 · 第{r.content.panel}格 · 底稿 v
-              {r.version}
-            </summary>
-            {r.kind === "image" && (
-              <img
-                className="plan-thumbnail"
-                src={r.content.url}
-                alt="本次底图"
-              />
-            )}
-            {operation === "repair" && (
-              <div className="annotation-preview">
-                <small>
-                  批注版本 {annotationPreview[r.id]?.version ?? "读取中"}
-                </small>
-                {annotationPreview[r.id]?.items.map((a: any, i: number) => (
-                  <p key={a.id}>
-                    {i + 1}. {a.type === "protect" ? "保护区" : "修改区域"}：
-                    {a.note || "未填写文字"}
-                  </p>
-                ))}
-              </div>
-            )}
-            <label>
-              该格补充意见
-              <textarea
-                rows={2}
-                value={perItem[r.id] || ""}
-                onChange={(e) =>
-                  setPerItem({ ...perItem, [r.id]: e.target.value })
-                }
-              />
-            </label>
-          </details>
-        ))}
+        <details className="per-item-plans" open={refs.length <= 5}>
+          <summary>逐格补充与输入版本 · {refs.length} 格（按需展开）</summary>
+          {refs.map((r) => (
+            <details key={r.id}>
+              <summary>
+                第{r.content.episode}话 · 第{r.content.panel}格 · 底稿 v
+                {r.version}
+              </summary>
+              {r.kind === "image" && (
+                <img
+                  className="plan-thumbnail"
+                  src={r.content.url}
+                  alt="本次底图"
+                />
+              )}
+              {operation === "repair" && (
+                <div className="annotation-preview">
+                  <small>
+                    批注版本 {annotationPreview[r.id]?.version ?? "读取中"}
+                  </small>
+                  {annotationPreview[r.id]?.items.map((a: any, i: number) => (
+                    <p key={a.id}>
+                      {i + 1}. {a.type === "protect" ? "保护区" : "修改区域"}：
+                      {a.note || "未填写文字"}
+                    </p>
+                  ))}
+                </div>
+              )}
+              <label>
+                该格补充意见
+                <textarea
+                  rows={2}
+                  value={perItem[r.id] || ""}
+                  onChange={(e) =>
+                    setPerItem({ ...perItem, [r.id]: e.target.value })
+                  }
+                />
+              </label>
+            </details>
+          ))}
+        </details>
         <p className="muted">
           {operation === "repair"
             ? "会汇总各图已保存的区域批注及保护区。"
@@ -665,7 +693,7 @@ export function Conversation({
         <button
           className="primary"
           disabled={
-            busy ||
+            busy || stale ||
             !plan.trim() ||
             !annotationsReady ||
             (operation === "repair" &&
@@ -688,6 +716,7 @@ export function Conversation({
                       a.version,
                     ]),
                   ),
+                  ...(operation==="rewrite"?{agent_run_ids:planRuns}:{}),
                   ...(chat
                     ? {
                         conversation_id: chat.id,
@@ -709,7 +738,7 @@ export function Conversation({
             }
           }}
         >
-          {busy ? "正在提交…" : "按方案生成 · 模拟"}
+          {busy ? "正在提交…" : (["image","repair"].includes(operation) ? "按方案生成 · 模拟" : "按方案生成候选")}
         </button>
         {!annotationsReady && (
           <small>区域批注尚未保存，保存完成后可生成。</small>
@@ -730,25 +759,38 @@ export function Conversation({
 function recPathLocal(r: RecordItem) {
   return base(r.project_id) + "/records/" + r.id;
 }
-function GroupResults({
+function CandidateError({message}:{message:string}) {
+  const anchor=useRef<HTMLDivElement>(null);
+  useEffect(()=>{if(message)anchor.current?.scrollIntoView?.({block:'nearest'});},[message]);
+  return message?<div ref={anchor} style={{scrollMarginBlockStart:120,scrollMarginBlockEnd:24}}><ErrorNote message={message}/></div>:null;
+}
+
+export function GroupResults({
   pid,
-  groups,
+  groups = [],
+  kindFilter,
   refresh,
   onClose,
 }: {
   pid: string;
-  groups: string[];
+  groups?: string[];
+  kindFilter?: string;
   refresh: () => Promise<void>;
   onClose: () => void;
 }) {
   const [tasks, setTasks] = useState<any[]>([]),
     [outputs, setOutputs] = useState<Record<string, RecordItem>>({}),
     [error, setError] = useState(""),
-    [busy, setBusy] = useState(false);
+    [busy, setBusy] = useState(false),
+    [loaded,setLoaded] = useState(false),
+    [receipts,setReceipts] = useState<Record<string,any[]>>({}),
+    [rowErrors,setRowErrors] = useState<Record<string,string>>({});
   const load = async () => {
     const rows = await api<any[]>(base(pid) + "/tasks?compact=true");
     const chosen = rows
-      .filter((t) => groups.includes(t.payload.group_id))
+      .filter((t) => groups.length ? groups.includes(t.payload.group_id) : ["range","rewrite","package","document"].includes(t.payload.operation))
+      .filter(t=>!kindFilter || t.payload.kind===kindFilter)
+      .flatMap((t) => (t.payload.output_ids?.length ? t.payload.output_ids : [t.output_id]).map((output_id: string) => ({...t,output_id})))
       .sort(
         (a, b) =>
           groups.indexOf(b.payload.group_id) -
@@ -760,14 +802,19 @@ function GroupResults({
       chosen
         .filter((t) => t.output_id)
         .map(
-          async (t) =>
-            [
-              t.output_id,
-              await api<RecordItem>(base(pid) + "/records/" + t.output_id),
-            ] as const,
+          async (t) => {
+            const version=t.payload.output_versions?.[t.output_id] || 1;
+            const [frozen,head]=await Promise.all([
+              api<RecordItem>(base(pid)+"/records/"+t.output_id+"?version="+version),
+              api<RecordItem>(base(pid)+"/records/"+t.output_id),
+            ]);
+            const adopted=head.content.adopted_into || (frozen.content.creation_candidate && !head.content.creation_candidate ? {id:head.id,version:head.adopted} : undefined);
+            return [t.output_id,{...frozen,content:{...frozen.content,adopted_into:adopted,rejected:head.content.rejected,candidate_changed:!adopted && !head.content.rejected && head.version!==version}}] as const;
+          }
         ),
     );
     setTasks(chosen);
+    setLoaded(true);
     setOutputs(Object.fromEntries(results));
   };
   useEffect(() => {
@@ -777,39 +824,52 @@ function GroupResults({
       1500,
     );
     return () => clearInterval(timer);
-  }, [groups.join(",")]);
+  }, [groups.join(","),kindFilter]);
+  const documentsOnly=!!kindFilter && ['skeleton','outline'].includes(kindFilter) || tasks.length>0 && tasks.every(t=>t.payload.operation==='document');
   return (
-    <Drawer title="本组修改结果 · 逐格比较采用" wide onClose={onClose}>
-      <p>同组候选集中展示；只采用你确认的格，其他格保持原稿。</p>
+    <Drawer title={documentsOnly ? '文档生成结果 · 比较采用' : groups.length ? "本组修改结果 · 逐格比较采用" : "生成候选 · 逐格核对采用"} wide onClose={onClose}>
+      <p>{documentsOnly?'生成结果先保留为候选；核对原稿与新稿后明确采用，其他文档保持不变。':'同组候选集中展示；只采用你确认的格，其他格保持原稿。'}</p>
       <ErrorNote message={error} />
-      {!tasks.length && <p>正在读取任务…</p>}
+      {!tasks.length && <p>{loaded ? "尚无文本生成任务。请先从细纲生成脚本，或对已选话格生成候选。" : "正在读取任务…"}</p>}
       {tasks.map((t) => {
         const out = outputs[t.output_id],
-          original = t.payload.snapshots?.[0];
+          original = t.payload.operation === 'package' ? t.payload.existing_package || t.payload.snapshots?.[0] : t.payload.snapshots?.[0],
+          subject=['skeleton','outline'].includes(out?.kind || t.payload.kind)?'文档':'此格';
         return (
-          <section className="group-result" key={t.id}>
+          <section className="group-result" id={"production-result-"+t.id} tabIndex={-1} key={t.id + ":" + t.output_id}>
             <div className="detail-heading">
               <h3>
-                第{t.payload.episode}话 · 第{t.payload.panel}格
+                {t.payload.operation==='document' ? (t.payload.document_kind==='skeleton'?'全书骨架':'分集细纲') : `第${out?.content.episode || t.payload.episode}话 · 第${out?.content.panel || t.payload.panel}格`}
+                <small className="muted"> · {({document:'文档生成',range:'脚本生成',rewrite:'文本修改',package:'生图包生成',image:'模拟生图',repair:'模拟返修'} as any)[t.payload.operation]}{t.created?' · '+new Date(t.created).toLocaleString('zh-CN'):''}</small>
               </h3>
               <span>
-                {(
+                {(['queued','running'].includes(t.status)&&t.pause_requested)?'正在暂停，等待收尾':t.status==='paused'&&t.payload.production_checkpoint?.reason==='manual_pause'?'已暂停':(
                   {
                     queued: "排队中",
                     running: "生成中",
                     succeeded: "候选已生成",
                     failed: "失败",
                     interrupted: "已中断",
+                    cancelled: "已取消",
+                    paused: "额度暂停",
                   } as any
                 )[t.status] || t.status}
               </span>
             </div>
             <p className="muted">本次要求：{t.payload.instruction}</p>
+            <Badge source={out?.source || t.source || t.payload.source || 'mock'}/>
+            {out?.content.candidate_changed && <p className="notice">此候选已另行改稿，下面保留生成时正文。请拒绝旧候选并重新生成核对。</p>}
+            {out?.content.input_stale && <p className="notice">生成期间输入已变化。此候选保留供比较，请核对最新输入后重新生成。</p>}
+            {t.status==='paused'&&t.payload.production_checkpoint&&<ProductionContinuation key={pid+":"+t.payload.production_checkpoint.attempt_id} pid={pid} tid={t.id} checkpoint={t.payload.production_checkpoint} onChanged={load}/>}
+            {['queued','running'].includes(t.status)&&t.payload.frozen&&['document','range','rewrite','package'].includes(t.payload.operation)&&<PauseToCheckpoint key={t.id} endpoint={base(pid)+`/production-jobs/${t.id}/pause`} requested={!!t.pause_requested} focusId={'production-checkpoint-'+t.id} fallbackId={'production-result-'+t.id} onChanged={load}/>}
+            {["queued","running","paused"].includes(t.status) && <button disabled={busy} onClick={async()=>{try{setBusy(true);setRowErrors(v=>({...v,[t.id+":"+t.output_id]:""}));await api(base(pid)+`/production-jobs/${t.id}/cancel`,json('POST',{}));await load();}catch(e){setRowErrors(v=>({...v,[t.id+":"+t.output_id]:(e as Error).message}));}finally{setBusy(false);}}}>取消此任务</button>}
+            {t.payload.frozen && <details onToggle={async e=>{if(!e.currentTarget.open)return;try{setReceipts(v=>({...v,[t.id]:[]}));const value=await api<any[]>(base(pid)+`/production-jobs/${t.id}/attempts`);setReceipts(v=>({...v,[t.id]:value}));}catch(e){setRowErrors(v=>({...v,[t.id+":"+t.output_id]:(e as Error).message}));}}}><summary>查看模型返回与用量</summary>{receipts[t.id]?.map((r,index)=><section key={r.id}><p>运行段{index+1} · 第{r.attempt}轮结构尝试 · {({paused:r.checkpoint?.reason==='manual_pause'?'手动暂停':'额度暂停',continued:'已续接，原段保留',queued:'等待续接',valid:'校验通过',invalid:'结构未通过',error:'调用未完成',interrupted:'应用重启，返回未确认',running:'运行中',received:'已返回'} as any)[r.status] || r.status} · {r.usage ? `输入 ${r.usage.input} / 输出 ${r.usage.output} tokens` : r.checkpoint?.usage ? `已知 ${r.checkpoint.usage.totalTokens} tokens；总用量仍未知` : '用量未知'}{r.continuation?.parent_id?' · 从上一段继续':''}</p><pre style={{whiteSpace:'pre-wrap',overflowWrap:'anywhere'}}>{r.raw || '尚无可显示的模型返回'}</pre>{['failed','interrupted','paused'].includes(t.status)&&needsToolReceiptRecovery(r.status,r.checkpoint)&&!(t.status==='paused'&&t.payload.production_checkpoint?.attempt_id===r.id)&&<ToolReceiptRecovery cancelEndpoint={base(pid)+`/production-jobs/${t.id}/cancel`} endpoint={base(pid)+`/production-jobs/${t.id}/attempts/${r.id}`} focusId={'production-checkpoint-'+t.id} onChanged={async()=>{await load();const value=await api<any[]>(base(pid)+`/production-jobs/${t.id}/attempts`);setReceipts(v=>({...v,[t.id]:value}));}}/>}</section>)}</details>}
+
+            {out?.kind==="package"&&out.content.prompt_mode==="override"&&<p className="notice">完整提示词覆盖模式：最终发送完整提示词，分段不会自动合成。如需影响生图，请明确修改完整提示词。</p>}
             {out &&
-              original &&
               (out.kind === "image" ? (
                 <div className="candidate-images">
-                  {[original, out].map((r, i) => (
+                  {[...(original ? [original] : []), out].map((r, i) => (
                     <figure key={i}>
                       <img
                         src={r.content.url}
@@ -823,12 +883,12 @@ function GroupResults({
                 </div>
               ) : (
                 <div className="candidate-text">
-                  {[original, out].map((r, i) => (
+                  {[...(original ? [original] : []), out].map((r, i) => (
                     <section key={i}>
-                      <h4>{i ? "修改候选" : "原稿 v" + r.version}</h4>
-                      {(out.kind === "script"
+                      <h4>{!original || i ? "修改候选" : t.payload.operation === "package" && r.kind === "script" ? "源脚本 v" + r.version : "原稿 v" + r.version}</h4>
+                      {['skeleton','outline'].includes(r.kind) ? <div className="read-copy">{documentText(r.content)}</div> : (r.kind === "script"
                         ? scriptFields.slice(1)
-                        : [["prompt", "完整提示词"]]
+                        : [...promptFields,["prompt", "完整提示词"]]
                       ).map(([k, l]) => (
                         <div key={k}>
                           <strong>{l}</strong>
@@ -839,13 +899,16 @@ function GroupResults({
                   ))}
                 </div>
               ))}
+            <CandidateError message={rowErrors[t.id+":"+t.output_id] || ""}/>
             {out && (
               <button
                 className="primary"
-                disabled={busy || !!out.content.adopted_into}
+                disabled={busy || !!out.content.candidate_changed || !!out.content.rejected || !!out.content.adopted_into || (!out.content.creation_candidate && !out.content.candidate_for)}
                 onClick={async () => {
                   try {
-                    setBusy(true);
+                    setBusy(true);setRowErrors(v=>({...v,[t.id+":"+t.output_id]:""}));
+                    const ids = new Set([...Object.keys(t.payload.input_refs || {}), ...(out.content.candidate_for ? [out.content.candidate_for] : [])]);
+                    if([...ids].some(id=>localStorage.getItem(`comic-draft:${pid}:${id}`)) || (t.payload.queried_graph_revision !== undefined && localStorage.getItem(`comic-graph-draft:${pid}`))) throw Error('输入或目标仍有未保存草稿，请先保存或处理草稿，再采用。');
                     await api(
                       base(pid) + "/candidates/" + out.id + "/adopt",
                       json("POST", {}),
@@ -853,36 +916,37 @@ function GroupResults({
                     await load();
                     await refresh();
                   } catch (e) {
-                    setError((e as Error).message);
+                    setRowErrors(v=>({...v,[t.id+":"+t.output_id]:(e as Error).message}));
                   } finally {
                     setBusy(false);
                   }
                 }}
               >
-                {out.content.adopted_into ? "此格已采用" : "采用此格候选"}
+                {out.content.candidate_changed ? "候选已改稿" : out.content.rejected ? `${subject}已拒绝` : out.content.adopted_into || (!out.content.creation_candidate && !out.content.candidate_for) ? `${subject}已采用` : `采用${subject}候选`}
               </button>
             )}
-            {["failed", "interrupted"].includes(t.status) && (
+            {out && !out.content.rejected && !out.content.adopted_into && (out.content.creation_candidate || out.content.candidate_for) && <button disabled={busy} onClick={async()=>{try{setBusy(true);setRowErrors(v=>({...v,[t.id+":"+t.output_id]:""}));await api(base(pid)+`/candidates/${out.id}/reject`,json('POST',{}));await load();await refresh();}catch(e){setRowErrors(v=>({...v,[t.id+":"+t.output_id]:(e as Error).message}));}finally{setBusy(false);}}}>{`拒绝${subject}候选`}</button>}
+            {["failed", "interrupted"].includes(t.status) && !t.payload.production_continuation && (
               <>
                 <p>{t.error}</p>
                 <button
                   disabled={busy}
                   onClick={async () => {
                     try {
-                      setBusy(true);
+                      setBusy(true);setRowErrors(v=>({...v,[t.id+":"+t.output_id]:""}));
                       await api(
                         base(pid) + "/tasks/" + t.id + "/retry",
                         json("POST", {}),
                       );
                       await load();
                     } catch (e) {
-                      setError((e as Error).message);
+                      setRowErrors(v=>({...v,[t.id+":"+t.output_id]:(e as Error).message}));
                     } finally {
                       setBusy(false);
                     }
                   }}
                 >
-                  仅重试此格
+                  {t.payload.operation === "document" ? "重试此文档" : t.payload.operation === "range" ? "仅重试此话" : "仅重试此格"}
                 </button>
               </>
             )}

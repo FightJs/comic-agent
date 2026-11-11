@@ -1,0 +1,11 @@
+.model-capabilities{padding-block:12px;color:var(--ink)}
+.model-capabilities>p{line-height:1.7;color:var(--muted)}
+.model-capability-list{margin-block:12px}
+.model-capability-row{padding-block:14px;border-top:1px solid var(--line);overflow-wrap:anywhere}
+.model-capability-heading{display:flex;align-items:baseline;justify-content:space-between;gap:12px}
+.model-capability-heading h4{margin:0;font-size:.9375rem}
+.model-capability-heading span,.model-capability-row small{font-size:.8125rem;color:var(--muted)}
+.model-capability-row p,.model-capability-limits{font-size:.875rem;line-height:1.65;margin-block:8px}
+.model-capability-row label{display:flex;flex-direction:column;gap:6px;align-items:stretch;margin-top:10px}
+.model-capability-row details{margin-block:8px;font-size:.8125rem}
+.model-capabilities>button{margin-block:4px}

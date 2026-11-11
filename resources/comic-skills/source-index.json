@@ -1,0 +1,459 @@
+{
+  "format": "comic-skill-source-index/v1",
+  "version": "1.0.0-pi.5",
+  "rules": [
+    {
+      "path": "rules/MEM-001.md",
+      "source": "vertical-comic-preproduction/assets/rule-memory/内置规则/规则/生图/MEM-001_床面承托与被褥遮挡.md",
+      "sha256": "7e9a3bc7650d3e61cfad5927dece85a6250dd09dc71c0b9e71e0c7dfefb511cf"
+    },
+    {
+      "path": "rules/MEM-002.md",
+      "source": "vertical-comic-preproduction/assets/rule-memory/内置规则/规则/生图/MEM-002_多人接触与肢体归属.md",
+      "sha256": "ad89f6e847954c55e839898fcb96895406df07b1c20b208cba9fdfd4c0ca2404"
+    },
+    {
+      "path": "rules/MEM-004.md",
+      "source": "vertical-comic-preproduction/assets/rule-memory/内置规则/规则/生图/MEM-004_局部返修保留批准特征.md",
+      "sha256": "9f95df308c4997730e5176b6ebf115b80886bb301d82ff460ff589e52f9c0ccd"
+    },
+    {
+      "path": "rules/MEM-006.md",
+      "source": "vertical-comic-preproduction/assets/rule-memory/内置规则/规则/生图/MEM-006_人体结构物理合理性与动作表现力.md",
+      "sha256": "d6a032b02508b27d139358b8252808a95a4f8f6cdc6ddbf930f1ce0eb5417a6d"
+    },
+    {
+      "path": "rules/MEM-008.md",
+      "source": "vertical-comic-preproduction/assets/rule-memory/内置规则/规则/生图/MEM-008_镜面统一磨砂且不呈现真实反射.md",
+      "sha256": "4d57461a67520ff2f8cc16d8c07a76ea6e7bec8fb8af2482998ae2db273c4a14"
+    },
+    {
+      "path": "rules/MEM-011.md",
+      "source": "vertical-comic-preproduction/assets/rule-memory/内置规则/规则/生图/MEM-011_掌掴完成后的结果瞬间表达.md",
+      "sha256": "d43611860efd323dc050e177ae2b881d65f84f6c1a7fa9f3173552b691a4765e"
+    },
+    {
+      "path": "rules/MEM-003.md",
+      "source": "vertical-comic-preproduction/assets/rule-memory/内置规则/规则/镜头/MEM-003_换机位保持固定空间锚点.md",
+      "sha256": "2db4835322e339964521cdb6768ce0d4c582f164f13b09724311e9ddae63c14a"
+    },
+    {
+      "path": "rules/MEM-005.md",
+      "source": "vertical-comic-preproduction/assets/rule-memory/内置规则/规则/镜头/MEM-005_人物场景与关键道具的一致性和连续性.md",
+      "sha256": "5677cde1ec4a24a58e1607b94f3d07496f5849fa765c41a51e770925bd90d6d3"
+    },
+    {
+      "path": "rules/MEM-007.md",
+      "source": "vertical-comic-preproduction/assets/rule-memory/内置规则/规则/镜头/MEM-007_相邻格同角色微表情必须有可见变化.md",
+      "sha256": "8c4ba291921293113ab1c1ce791de35443cc02b8025a4a41d764a9f89c5b4ade"
+    },
+    {
+      "path": "rules/MEM-009.md",
+      "source": "vertical-comic-preproduction/assets/rule-memory/内置规则/规则/镜头/MEM-009_真实透视与遮挡优先于完整展示.md",
+      "sha256": "00feb6b2661e779e203b3d3314f5d52047537d83e7325d0d5afb0b1cda11f785"
+    },
+    {
+      "path": "rules/MEM-010.md",
+      "source": "vertical-comic-preproduction/assets/rule-memory/内置规则/规则/镜头/MEM-010_叙事驱动的相邻镜头与物理连续性.md",
+      "sha256": "0bc1ba2832cca681cc110576e34a50a758d15209e6848e63815cd8abd2b16167"
+    }
+  ],
+  "packages": [
+    {
+      "id": "comic-preproduction",
+      "name": "条漫 · 前期协调",
+      "stages": [
+        "setup",
+        "memory",
+        "skeleton",
+        "outline",
+        "style",
+        "asset",
+        "script",
+        "package",
+        "image",
+        "review"
+      ],
+      "rules": [],
+      "source_entry": "vertical-comic-preproduction/SKILL.md",
+      "source_entry_sha256": "106a2c0466793557ec24a93c2a93848888c0cb7c444542b4d81f86de119f2482",
+      "references": [
+        "references/identity-confirmation.md",
+        "references/costume-handoff.md",
+        "references/visual-continuity.md",
+        "references/shot-framing.md",
+        "references/reference-budget.md",
+        "references/prompt-package.md",
+        "references/background-treatment.md",
+        "references/reference-continuity.md",
+        "references/screenwriting-distillate.md",
+        "references/frame-ratio-plan.md",
+        "references/appearance-and-single-frame.md",
+        "references/control-guidance.md",
+        "references/final-input-semantics.md",
+        "references/panel-readiness.md",
+        "references/visual-evidence.md",
+        "references/light-review.md",
+        "references/quality-gates.md",
+        "references/production-decisions.md"
+      ],
+      "harness_metadata": {
+        "source": "vertical-comic-preproduction/agents/openai.yaml",
+        "source_sha256": "3bff0d3a42fef7ed3a03c9cc6f26e433e79ad9c965fbbab89ecd4199a0bcba76",
+        "mapped_to": [
+          "name",
+          "stages",
+          "entrypoint",
+          "explicit_project_selection"
+        ],
+        "adaptation": "原Codex界面/默认提示及隐式触发元信息由工作台包name/stages/entrypoint与项目明确启用替代；不导入品牌色、不继承allow_implicit_invocation或旧默认提示中的全面审核/自动生产权限。"
+      }
+    },
+    {
+      "id": "comic-visual-assets",
+      "name": "条漫 · 视觉基准与资产",
+      "stages": [
+        "style",
+        "asset"
+      ],
+      "rules": [
+        "MEM-005"
+      ],
+      "source_entry": "vertical-comic-visual-assets/SKILL.md",
+      "source_entry_sha256": "965f5a0129720e7c09380bb44405843b4c5c9f2fb087f9e780d300e4c3eda587",
+      "references": [
+        "references/identity-confirmation.md",
+        "references/costume-handoff.md",
+        "references/visual-continuity.md",
+        "references/shot-framing.md",
+        "references/reference-budget.md",
+        "references/prompt-package.md",
+        "references/background-treatment.md",
+        "references/reference-continuity.md",
+        "references/screenwriting-distillate.md",
+        "references/frame-ratio-plan.md",
+        "references/appearance-and-single-frame.md",
+        "references/control-guidance.md",
+        "references/visual-evidence.md"
+      ],
+      "harness_metadata": {
+        "source": "vertical-comic-visual-assets/agents/openai.yaml",
+        "source_sha256": "bd1fe373e9f9408d2930032a82d18922760aabb83463c3d33912f870235eeae7",
+        "mapped_to": [
+          "name",
+          "stages",
+          "entrypoint",
+          "explicit_project_selection"
+        ],
+        "adaptation": "原Codex界面/默认提示及隐式触发元信息由工作台包name/stages/entrypoint与项目明确启用替代；不导入品牌色、不继承allow_implicit_invocation或旧默认提示中的全面审核/自动生产权限。"
+      }
+    },
+    {
+      "id": "comic-shot-design",
+      "name": "条漫 · 镜头与空间",
+      "stages": [
+        "script",
+        "package"
+      ],
+      "rules": [
+        "MEM-001",
+        "MEM-002",
+        "MEM-003",
+        "MEM-005",
+        "MEM-006",
+        "MEM-007",
+        "MEM-008",
+        "MEM-009",
+        "MEM-010",
+        "MEM-011"
+      ],
+      "source_entry": "vertical-comic-shot-design/SKILL.md",
+      "source_entry_sha256": "6e2a0a0efca3d28cc3f8a7f97e90d1f2808e5de07bdecc829c58d3b5f3c85521",
+      "references": [
+        "references/identity-confirmation.md",
+        "references/costume-handoff.md",
+        "references/visual-continuity.md",
+        "references/shot-framing.md",
+        "references/reference-budget.md",
+        "references/prompt-package.md",
+        "references/background-treatment.md",
+        "references/reference-continuity.md",
+        "references/screenwriting-distillate.md",
+        "references/frame-ratio-plan.md",
+        "references/appearance-and-single-frame.md",
+        "references/control-guidance.md",
+        "references/final-input-semantics.md",
+        "references/visual-evidence.md"
+      ],
+      "harness_metadata": {
+        "source": "vertical-comic-shot-design/agents/openai.yaml",
+        "source_sha256": "8ef54db5632e96f7a9322aafb29500e8ae5ad7691368d0c55152a57a6587f106",
+        "mapped_to": [
+          "name",
+          "stages",
+          "entrypoint",
+          "explicit_project_selection"
+        ],
+        "adaptation": "原Codex界面/默认提示及隐式触发元信息由工作台包name/stages/entrypoint与项目明确启用替代；不导入品牌色、不继承allow_implicit_invocation或旧默认提示中的全面审核/自动生产权限。"
+      }
+    },
+    {
+      "id": "comic-panel-generation",
+      "name": "条漫 · 逐格输入与生成",
+      "stages": [
+        "package",
+        "image"
+      ],
+      "rules": [
+        "MEM-001",
+        "MEM-002",
+        "MEM-003",
+        "MEM-004",
+        "MEM-005",
+        "MEM-006",
+        "MEM-008",
+        "MEM-009",
+        "MEM-010",
+        "MEM-011"
+      ],
+      "source_entry": "vertical-comic-panel-generation/SKILL.md",
+      "source_entry_sha256": "d8164ebfd492b2ea9eda38df888599880aee5af78fd787b1bef1710fa5110124",
+      "references": [
+        "references/identity-confirmation.md",
+        "references/costume-handoff.md",
+        "references/visual-continuity.md",
+        "references/shot-framing.md",
+        "references/reference-budget.md",
+        "references/prompt-package.md",
+        "references/background-treatment.md",
+        "references/reference-continuity.md",
+        "references/screenwriting-distillate.md",
+        "references/frame-ratio-plan.md",
+        "references/appearance-and-single-frame.md",
+        "references/control-guidance.md",
+        "references/final-input-semantics.md",
+        "references/panel-readiness.md",
+        "references/light-review.md",
+        "references/production-decisions.md"
+      ],
+      "harness_metadata": {
+        "source": "vertical-comic-panel-generation/agents/openai.yaml",
+        "source_sha256": "c3af3af9296703d9abe43da7f2cb947a724d8d1e2fc344e644d8ec7279ae26a4",
+        "mapped_to": [
+          "name",
+          "stages",
+          "entrypoint",
+          "explicit_project_selection"
+        ],
+        "adaptation": "原Codex界面/默认提示及隐式触发元信息由工作台包name/stages/entrypoint与项目明确启用替代；不导入品牌色、不继承allow_implicit_invocation或旧默认提示中的全面审核/自动生产权限。"
+      }
+    },
+    {
+      "id": "comic-image-review",
+      "name": "条漫 · 实际图片轻审核",
+      "stages": [
+        "review"
+      ],
+      "rules": [
+        "MEM-001",
+        "MEM-002",
+        "MEM-003",
+        "MEM-004",
+        "MEM-005",
+        "MEM-006",
+        "MEM-007",
+        "MEM-008",
+        "MEM-009",
+        "MEM-010",
+        "MEM-011"
+      ],
+      "source_entry": "vertical-comic-image-review/SKILL.md",
+      "source_entry_sha256": "a04bfd769a2fbbe516f485cd40d931f2beb0633e182f35d2fde93c03510cbc8c",
+      "references": [
+        "references/identity-confirmation.md",
+        "references/costume-handoff.md",
+        "references/visual-continuity.md",
+        "references/shot-framing.md",
+        "references/reference-budget.md",
+        "references/prompt-package.md",
+        "references/background-treatment.md",
+        "references/reference-continuity.md",
+        "references/screenwriting-distillate.md",
+        "references/frame-ratio-plan.md",
+        "references/appearance-and-single-frame.md",
+        "references/visual-evidence.md",
+        "references/light-review.md",
+        "references/quality-gates.md",
+        "references/production-decisions.md"
+      ],
+      "harness_metadata": {
+        "source": "vertical-comic-image-review/agents/openai.yaml",
+        "source_sha256": "5997032ddab4e28305f649ef1727b1dc74594ea4f5ddadc76dc5e8d673c5319f",
+        "mapped_to": [
+          "name",
+          "stages",
+          "entrypoint",
+          "explicit_project_selection"
+        ],
+        "adaptation": "原Codex界面/默认提示及隐式触发元信息由工作台包name/stages/entrypoint与项目明确启用替代；不导入品牌色、不继承allow_implicit_invocation或旧默认提示中的全面审核/自动生产权限。"
+      }
+    }
+  ],
+  "references": [
+    {
+      "path": "references/identity-confirmation.md",
+      "source": "vertical-comic-preproduction/references/identity-confirmation.md",
+      "source_sha256": "e9db84c9a07a99a1ad8182bbc3fb80092367bf8d573bf490440a9a7584cf526a",
+      "sha256": "0cee1746177950b4441b62ef63db1bacb5af17d0bdf1117e41e01a94d615c6df",
+      "adaptation": "保留称呼/关系/身份/当前状态/范围证据；旧identity_registry与CLI替换为项目现有记录和候选，旧执行者批准不替代人审。"
+    },
+    {
+      "path": "references/costume-handoff.md",
+      "source": "vertical-comic-preproduction/references/costume-handoff.md",
+      "source_sha256": "08859a51d363125fcfa343c4b689b360f2898564bd337410b36c4271b25e3f5b",
+      "sha256": "275552842221a47bd0a05f623865769feb7f188357bc9a60b4c8b453925ab191",
+      "adaptation": "保留选稿冲突、当前衣装需求、未来可见范围去重、状态承接与参考板规范；旧计数/发布/ZIP工具未迁，映射版本资产与原返回恢复。"
+    },
+    {
+      "path": "references/visual-continuity.md",
+      "source": "vertical-comic-preproduction/references/visual-continuity.md",
+      "source_sha256": "7569b6188bc91c76cd2c015d065e694c1127dc27b55a3def856101d17d381b20",
+      "sha256": "5c2543cd17a95c2f7335d0a4c22818f2292eb44302f012ed505a8883effe016c",
+      "adaptation": "保留固定空间、人物世界状态、投影、辅助图条件与实图比较；无二进制示例图迁入，不将九宫格或辅助图变强制调用。 原尽量九宫格保留为可用方法而非强制；原连续脸朝向不得完全一致不作为硬要求迁入，避免为机械变化违反源稿动作、可行机位与MEM-010 v2；改由有叙事依据的镜头/表情变化核对。"
+    },
+    {
+      "path": "references/shot-framing.md",
+      "source": "vertical-comic-preproduction/references/shot-framing.md",
+      "source_sha256": "a5ad2ee58e74d634dd1cc073750b4debe09d8ebc350c1643bc7563bf3eac790a",
+      "sha256": "03a756f2c2d93becb188f8183ac7dae079900ab2a6a61559369b515d3dd15c4b",
+      "adaptation": "保留信息优先裁切、动作可行性、景别理由、相邻真实变化与旧版本差异；无旧例外表单或自动批准。"
+    },
+    {
+      "path": "references/reference-budget.md",
+      "source": "vertical-comic-preproduction/references/reference-budget.md",
+      "source_sha256": "fdf4a8c8abc5ac4d113fefe8793f1ac383bd30813679eedc0027013d927cd3a0",
+      "sha256": "feb6c09be58a89baaecf8b34e9e1956862a426e381f14a18886ce591d924ac91",
+      "adaptation": "保留五份创作预算、同图多用途、忠实图集来源/可辨细节及输入拒绝边界；旧工具限制不冒充API通用能力，图集工具尚未接入。"
+    },
+    {
+      "path": "references/prompt-package.md",
+      "source": "vertical-comic-preproduction/references/prompt-package.md",
+      "source_sha256": "7d1ca6d0a11aff6c61086d9d6c67bce7d1dd3c95eb1208844d31229221148a2d",
+      "sha256": "7f6bac5f83b42f8075fd66cb874d5804fcfe7b0c1edc7cbdd025c733ba3fdab0",
+      "adaptation": "保留实际可见事实、动作接触、参考职责、模块选择、最终去冲突与完整必要约束；旧编译器/参数替换为宿主实际字段及候选。"
+    },
+    {
+      "path": "references/background-treatment.md",
+      "source": "vertical-comic-preproduction/references/background-treatment.md",
+      "source_sha256": "ad258072afcd139d26a7f20a384f03e99ab44cc530960317b1f3722bd8a902dd",
+      "sha256": "261980e918e614a285d5b84bf99230f7b1352951bee6e585da5c300b9a2d1074",
+      "adaptation": "保留必要实景、柔化/轮廓/景深边界、清晰分区及返修判断；不实现旧policy字段、背景状态编译器或新增审核轮。"
+    },
+    {
+      "path": "references/reference-continuity.md",
+      "source": "vertical-comic-preproduction/references/reference-continuity.md",
+      "source_sha256": "fbb3e7089851502cebcbaaa280b9730ec3bd8a91c466d2063132300072bde091",
+      "sha256": "968af8e6f65809f289056c1fecbb972cd45fdc9024637d074994a39ce93e459f",
+      "adaptation": "保留八用途隔离、四类场景变化、可见性与分项真实观察；不移植论文模型控制或旧六维QA/schema。"
+    },
+    {
+      "path": "references/screenwriting-distillate.md",
+      "source": "vertical-comic-preproduction/references/screenwriting-distillate.md",
+      "source_sha256": "a2e257102fa1a30227f79c816c275f1eeec91e3e1bb5c95e71c286c4bceaf08e",
+      "sha256": "413901248d9a7e3dc089a4832741679a30f97784a2c5788e98faf9ed59386a51",
+      "adaptation": "保留已有目标阻碍结果、可见动作、双轨节奏、镜头信息功能与连续性；不赋予镜头阶段改剧情权限。"
+    },
+    {
+      "path": "references/frame-ratio-plan.md",
+      "source": "vertical-comic-preproduction/references/frame-ratio-plan.md",
+      "source_sha256": "b01f63168f2b6084f17d6062bef76b79f8e27aff865a89a09a11d76e00890cfc",
+      "sha256": "ab86f6835d273681dc48b4fc964f88c6c7198d72b56b947ed5049f8c3d340249",
+      "adaptation": "保留六比例、严格竖版占比、均衡/相邻/prefix与真实输出能力边界；只读工具查当前冻结主稿源序并核对候选分布，不强制覆盖其他风格或旧任务；旧CLI/状态签署/像素验收未迁。"
+    },
+    {
+      "path": "references/appearance-and-single-frame.md",
+      "source": "vertical-comic-preproduction/references/appearance-and-single-frame.md",
+      "source_sha256": "85e43f43ef144831dbf0125700f043b30155d6f20d7a43061b5ef1afd1e70222",
+      "sha256": "58d16581ed4e2b29da62e3ef945105de6fc30500fd8ffd0c57235bb767fa6320",
+      "adaptation": "保留核心衣装/配饰归属、总数与可见数、身体自身侧/投影/锚点、单画面取舍与修复保留；不迁旧appearance_lock字段编译器或以全面逐项QA覆盖当前轻审核。"
+    },
+    {
+      "path": "references/control-guidance.md",
+      "source": "vertical-comic-preproduction/references/control-guidance.md",
+      "source_sha256": "fb4ee0f7c53096ed8f38156c322b3da277aef828d37a5e9457862d9b22461693",
+      "sha256": "f71bdb6b31cbf88927cddbc695654da1a620a2fdf7fe96353c66a5264348645f",
+      "adaptation": "保留普通参考/结构控制/实际执行/视觉正确四层和来源相机/模型槽/真实证据要求；当前无结构控制适配器，旧控制脚本和Codex专属参数不转成可调用工具。"
+    },
+    {
+      "path": "references/final-input-semantics.md",
+      "source": "vertical-comic-preproduction/references/final-input-semantics.md",
+      "source_sha256": "e679bf7e2855221d6dedc7da91fc3b66f3a55438421325c1b380dca7317648c4",
+      "sha256": "c99117ad67af2ec4648bd6083512ebcd0f5244c85ebb34398fa9bbfe537e4b8c",
+      "adaptation": "保留当前状态/原文依据、全实际prompt冲突消解、静态准备/真实前图依赖/权限、代表格与范围复核；不迁input_semantics脚本、旧A/B/ZIP签署或自动内部批准。"
+    },
+    {
+      "path": "references/panel-readiness.md",
+      "source": "vertical-comic-preproduction/references/panel-readiness.md",
+      "source_sha256": "56fb6ee174e7a94581723b05bf1a86cfd62eb6bb41e6acde94ae98d5545e21b4",
+      "sha256": "fb69fc40ee62cb0cb379574313b9290a27009b1839f50c05d77736a2c696f1bb",
+      "adaptation": "保留完整源序、设计可审/可提交分离、真实依赖与跨话比较区分、局部阻塞/同版复用；无旧readiness分类器/compile门禁，不宣称已自动准备或交付。"
+    },
+    {
+      "path": "references/visual-evidence.md",
+      "source": "vertical-comic-preproduction/references/visual-evidence.md",
+      "source_sha256": "fc853dedd954ce98bccb22322abb41e0366246f202a1a4db867ee825f6164eed",
+      "sha256": "6ae3ab26f102b667cceb29da3f2cd3e2cb774d05c1fba446d7e25f358f78e5a6",
+      "adaptation": "保留物理子空间/持续在场/真实遮挡、关键原尺寸证据、完整接触目标/动作阶段、底图保留与对照边界；旧原尺寸裁图/图集认证未迁，全面逐项观察受当前轻审范围限制。"
+    },
+    {
+      "path": "references/light-review.md",
+      "source": "vertical-comic-preproduction/references/light-review.md",
+      "source_sha256": "06254ca2669b89abab39feebdbf5b50ef07396d4c083eefaafa7a659ecf0cd3a",
+      "sha256": "934f0c1614503ffc26900f7298b92efdec448cd94071e6b05d869f08e56d8054",
+      "adaptation": "保留一次剧情观察、严重空背景与普通纹理区分、一轮必要修复/真实问题；工作台自动准入仍critical+story，不改scene分类绕过。旧自动采用/阶段限时/极简封包器未迁。"
+    },
+    {
+      "path": "references/quality-gates.md",
+      "source": "vertical-comic-preproduction/references/quality-gates.md",
+      "source_sha256": "3cb17d4f42572486f78126bf2a74ef5c1eeabbeeff7e765de349d8d1385aa70e",
+      "sha256": "9eaac6f002666ad94a0081870c1171bfa56488354d295c4223de4a7af6f0e7f9",
+      "adaptation": "保留身份/衣装/地点/源稿/镜头/真实prompt与外部范围阻塞，技术不等视觉；旧A/B/C/D、batch5及全面终审不当成当前接口，编辑阶段用户修改权限保留。"
+    },
+    {
+      "path": "references/production-decisions.md",
+      "source": "vertical-comic-preproduction/references/production-decisions.md",
+      "source_sha256": "8ce65789b0743c605e99cb352f0a1f910faf5b4028969d3453df2d0a8565132f",
+      "sha256": "39775859950cb8c18f2ab597267cc404c73e8479923cc74512e450c83575d03c",
+      "adaptation": "保留三类实际问题、根因/一次合并修复、版本取舍/旧图对应QA/真实遗留/未知预算；最新轻审优先，旧自动采用/六列CSV/交付命令未迁。"
+    }
+  ],
+  "script_adaptations": [
+    {
+      "source": "vertical-comic-preproduction/scripts/frame_ratio_plan.py",
+      "source_sha256": "4d6ee44a4b8bf2c81afede43a7a80b54652568240809967e592a5bcfaa4a27cc",
+      "destination": "backend/frame_plan.py",
+      "tool": "project_query action=frame_plan",
+      "scope": "只迁statistics/distribution_errors数学检查及宿主快照绑定。未迁模板文件、旧RV/source文件合同、实际像素/容差检查、CLI或批准发布。"
+    }
+  ],
+  "semantic_increments": [
+    {
+      "version": "1.0.0-pi.5",
+      "sources": [
+        {
+          "source": "vertical-comic-preproduction/references/production-foundation.md",
+          "source_sha256": "e38c9cdfc85ffac09674ef5fc47734ca334285eaed6e4d5a33099379314cf3fd"
+        },
+        {
+          "source": "vertical-comic-preproduction/references/task-origin.md",
+          "source_sha256": "858386ff284a3966942db58f7eda5742ed56daf4fdd7b200960a4788c972389a"
+        }
+      ],
+      "destinations": [
+        "workbench.md",
+        "entries/comic-preproduction.md"
+      ],
+      "adaptation": "既有同时满足/机位裁切原则补具体剧情道具冲突边界；补fresh/reuse_selected/恢复来源语义，不注册旧字段或新工具，不构成来源全文迁移。"
+    }
+  ]
+}

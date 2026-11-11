@@ -150,6 +150,40 @@ export function useDraft(record: RecordItem, onSaved: (r: RecordItem) => void) {
         setStatus("读取失败");
       }
     },
+    discard: async () => {
+      if (busy.current) return;
+      busy.current = true;
+      const snapshot = JSON.stringify(latest.current);
+      setStatus("读取中");
+      try {
+        const current = await api<RecordItem>(recPath(head.current));
+        if (!alive.current) return;
+        if (JSON.stringify(latest.current) !== snapshot) {
+          blocked.current = true;
+          setError("读取期间编辑已变化，草稿仍保留；请重新核对后再放弃。");
+          setStatus("编辑已保留");
+          return;
+        }
+        head.current = current;
+        latest.current = current.content;
+        saved.current = JSON.stringify(current.content);
+        blocked.current = false;
+        mockPending.current = false;
+        localStorage.removeItem(key);
+        setContent(current.content);
+        setError("");
+        setStatus("已保存");
+        onSaved(current);
+      } catch {
+        blocked.current = true;
+        if (alive.current) {
+          setError("无法读取最新内容，草稿仍保留；恢复连接后可重试。");
+          setStatus("读取失败");
+        }
+      } finally {
+        busy.current = false;
+      }
+    },
     head,
     accept,
     flagError: (message: string) => {

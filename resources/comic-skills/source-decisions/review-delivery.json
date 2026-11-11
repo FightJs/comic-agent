@@ -1,0 +1,1218 @@
+{
+  "format": "comic-source-decisions/v1",
+  "groups": [
+    "review_repair_adoption",
+    "delivery_transport"
+  ],
+  "files": [
+    {
+      "source": "vertical-comic-preproduction/references/grouped-review.md",
+      "source_sha256": "076b77353a7fc9d6227c0a416a245827672dcfa2c7e0acecd2f9d5ca176237bd",
+      "disposition": "mixed",
+      "summary": "保留明确批准语义；工作台版本采用和人工审核承接确认，旧阶段委托proof不移植。 不添加源默认人工停点；旧事件问询与撤销索引没有等价实现。",
+      "clauses": [
+        {
+          "source_anchor": "## B和包一次回复",
+          "behavior": "B与PACKAGE可一次回复但各自批准，真实委托与继续执行不同。",
+          "decision": "保留明确批准语义；工作台版本采用和人工审核承接确认，旧阶段委托proof不移植。",
+          "workbench_evidence": [
+            {
+              "path": "backend/app.py"
+            }
+          ]
+        },
+        {
+          "source_anchor": "## 一事一问",
+          "behavior": "同一事件去重，具体额外attempt或技术操作授权单独判断。",
+          "decision": "不添加源默认人工停点；旧事件问询与撤销索引没有等价实现。",
+          "workbench_evidence": [
+            {
+              "path": "backend/app.py"
+            }
+          ]
+        }
+      ],
+      "limits": "旧phase proof及AGENT_DECIDED协议不属当前运行接口。",
+      "program_equivalence_verified": false
+    },
+    {
+      "source": "vertical-comic-preproduction/references/review-efficiency.md",
+      "source_sha256": "78f783561b7742266af9892980dbff88cabea1939c469269be249bc677882cbf",
+      "disposition": "mixed",
+      "summary": "由批次异步执行与局部依赖承接；不恢复固定半话停点。 保留规则只读边界；旧RV数据适配未实现，不声称兼容接包。",
+      "clauses": [
+        {
+          "source_anchor": "# 审查策略路由",
+          "behavior": "整话异步，不设固定半话C；B与包回复仍各留独立证据。",
+          "decision": "由批次异步执行与局部依赖承接；不恢复固定半话停点。",
+          "workbench_evidence": [
+            {
+              "path": "backend/image_batches.py"
+            }
+          ]
+        },
+        {
+          "source_anchor": "# 审查策略路由",
+          "behavior": "旧包统一导入仅作数据，不执行旧代码。",
+          "decision": "保留规则只读边界；旧RV数据适配未实现，不声称兼容接包。",
+          "workbench_evidence": [
+            {
+              "path": "backend/image_batches.py"
+            }
+          ]
+        }
+      ],
+      "limits": "旧RV导入仍未实现，是否需要由真实迁移对象决定。",
+      "program_equivalence_verified": false
+    },
+    {
+      "source": "vertical-comic-preproduction/references/stage-image-review.md",
+      "source_sha256": "eba51422b61346e988c60c1df26b9529310f15256a6f34a74d6963fb8f2cb4f9",
+      "disposition": "mixed",
+      "summary": "宿主实际像素视觉报告保留审图依据；限定critical剧情问题一轮返修。 保留失败图与报告；未声称完整旧六维与全话跨话自动视觉认证。",
+      "clauses": [
+        {
+          "source_anchor": "### Phase F — returned-image gate",
+          "behavior": "逐项核对实际返回图的身份、衣装、场景、比例、邻格和物理关系。",
+          "decision": "宿主实际像素视觉报告保留审图依据；限定critical剧情问题一轮返修。",
+          "workbench_evidence": [
+            {
+              "path": "backend/vision_reviews.py"
+            },
+            {
+              "path": "backend/tests/test_vision_reviews.py",
+              "test": "test_vision_freezes_actual_pixels_records_report_and_never_approves_image"
+            }
+          ]
+        },
+        {
+          "source_anchor": "## 局部证据、误判与编辑退化",
+          "behavior": "局部证据来自原像素，保留失败并修最早失败层。",
+          "decision": "保留失败图与报告；未声称完整旧六维与全话跨话自动视觉认证。",
+          "workbench_evidence": [
+            {
+              "path": "backend/vision_reviews.py"
+            },
+            {
+              "path": "backend/tests/test_vision_reviews.py",
+              "test": "test_vision_freezes_actual_pixels_records_report_and_never_approves_image"
+            }
+          ]
+        }
+      ],
+      "limits": "真实供应商语义质量未实测，旧完整QA字段与跨话认证未迁。",
+      "program_equivalence_verified": false
+    },
+    {
+      "source": "vertical-comic-preproduction/scripts/asset_runtime.py",
+      "source_sha256": "0256e0ffaada5ff1acc8bc1623eb0354b88b0da42a2e88d5bf7caf1792f221f5",
+      "disposition": "mixed",
+      "summary": "宿主冻结请求、供应商适配和attempt承接调用边界。 宿主候选和未知账本承接；旧asset_call_definition_v1及Codex工具授权文件不迁。",
+      "clauses": [
+        {
+          "source_anchor": "def compile_job",
+          "behavior": "绑定书话、attempt、精确资产、授权与1至5张参考图。",
+          "decision": "宿主冻结请求、供应商适配和attempt承接调用边界。",
+          "workbench_evidence": [
+            {
+              "path": "backend/image_jobs.py"
+            }
+          ]
+        },
+        {
+          "source_anchor": "def save",
+          "behavior": "保存原请求、返回和图片证据，UNKNOWN须解决，保存不等于批准。",
+          "decision": "宿主候选和未知账本承接；旧asset_call_definition_v1及Codex工具授权文件不迁。",
+          "workbench_evidence": [
+            {
+              "path": "backend/image_jobs.py"
+            }
+          ]
+        }
+      ],
+      "limits": "没有验证旧文件协议与宿主调用程序等价。",
+      "program_equivalence_verified": false
+    },
+    {
+      "source": "vertical-comic-preproduction/scripts/calibration_repair.py",
+      "source_sha256": "a57c0daef30f05cbf793bac18d5afe40fe88fc97f8a74c91bff06f5dcfb1ae0a",
+      "disposition": "mixed",
+      "summary": "宿主仅一轮剧情返修承接次数上限；不冒充专用校准屏障。 保留失败候选及原固定资料；专用basis改变回A/B校验未迁。",
+      "clauses": [
+        {
+          "source_anchor": "def validate",
+          "behavior": "高风险新状态校准仅首轮FAIL后唯一round2，同范围预算且须具体诊断。",
+          "decision": "宿主仅一轮剧情返修承接次数上限；不冒充专用校准屏障。",
+          "workbench_evidence": [
+            {
+              "path": "backend/image_postprocess.py"
+            },
+            {
+              "path": "backend/tests/test_image_postprocess.py",
+              "test": "test_authorized_generate_review_one_story_repair_and_recheck_keeps_both_candidates"
+            }
+          ]
+        },
+        {
+          "source_anchor": "def source_basis",
+          "behavior": "失败图可作姿态构图空间编辑底图，不能升为身份或画风依据。",
+          "decision": "保留失败候选及原固定资料；专用basis改变回A/B校验未迁。",
+          "workbench_evidence": [
+            {
+              "path": "backend/image_postprocess.py"
+            },
+            {
+              "path": "backend/tests/test_image_postprocess.py",
+              "test": "test_authorized_generate_review_one_story_repair_and_recheck_keeps_both_candidates"
+            }
+          ]
+        }
+      ],
+      "limits": "校准屏障与旧binding校验属未迁机制，不自动扩展为新子系统。",
+      "program_equivalence_verified": false
+    },
+    {
+      "source": "vertical-comic-preproduction/scripts/episode_repair.py",
+      "source_sha256": "b0ed941bf6048984e4a9ef51e64e97a3e7d562bba8dc1cd5265d38796664c9ef",
+      "disposition": "mixed",
+      "summary": "未移植阈值共因停止器；不能把一轮返修称为该诊断能力。 宿主repair_of和review_id保存两轮证据，冻结策略控制唯一自动返修。",
+      "clauses": [
+        {
+          "source_anchor": "def systemic_errors",
+          "behavior": "累计超过五个失败须真实共因诊断。",
+          "decision": "未移植阈值共因停止器；不能把一轮返修称为该诊断能力。",
+          "workbench_evidence": [
+            {
+              "path": "backend/image_postprocess.py"
+            },
+            {
+              "path": "backend/tests/test_image_postprocess.py",
+              "test": "test_authorized_generate_review_one_story_repair_and_recheck_keeps_both_candidates"
+            }
+          ]
+        },
+        {
+          "source_anchor": "def repair_errors",
+          "behavior": "独立精确返修授权，保留首轮、新attempt及回执副本。",
+          "decision": "宿主repair_of和review_id保存两轮证据，冻结策略控制唯一自动返修。",
+          "workbench_evidence": [
+            {
+              "path": "backend/image_postprocess.py"
+            },
+            {
+              "path": "backend/tests/test_image_postprocess.py",
+              "test": "test_authorized_generate_review_one_story_repair_and_recheck_keeps_both_candidates"
+            }
+          ]
+        }
+      ],
+      "limits": "旧授权包与大批失败方法诊断未迁。",
+      "program_equivalence_verified": false
+    },
+    {
+      "source": "vertical-comic-preproduction/scripts/issue_disposition.py",
+      "source_sha256": "055b6eadfe994bfdab9505a9c8f929aa57b8d53b638286f9d372001650062e49",
+      "disposition": "mixed",
+      "summary": "宿主依赖局部等待与needs_attention承接局部失败隔离。 保留报告与人工采用分离；未移植planning_notes结构化代码分类器。",
+      "clauses": [
+        {
+          "source_anchor": "def summarize",
+          "behavior": "区分GLOBAL_BLOCK、LOCAL_BLOCK、AUTO_REPAIR与非阻断建议，独立工作可继续。",
+          "decision": "宿主依赖局部等待与needs_attention承接局部失败隔离。",
+          "workbench_evidence": [
+            {
+              "path": "backend/image_dependencies.py"
+            }
+          ]
+        },
+        {
+          "source_anchor": "def gate_disposition",
+          "behavior": "处置不能改原真值或偷换eligible集合。",
+          "decision": "保留报告与人工采用分离；未移植planning_notes结构化代码分类器。",
+          "workbench_evidence": [
+            {
+              "path": "backend/image_dependencies.py"
+            }
+          ]
+        }
+      ],
+      "limits": "相似推进效果不证明旧代码分类语义全覆盖。",
+      "program_equivalence_verified": false
+    },
+    {
+      "source": "vertical-comic-preproduction/scripts/light_review.py",
+      "source_sha256": "71e70b9f6ac38858d3d6e951549a9533717f1fafb79e78e65cfee5a274409c9f",
+      "disposition": "mixed",
+      "summary": "宿主实际像素结构报告承接，严重剧情才触发自动返修。 保留问题与原候选；旧FAIL人工后修采用及交付标签没有完整宿主合同。",
+      "clauses": [
+        {
+          "source_anchor": "CHECKS =",
+          "behavior": "轻审聚焦identity与story_readability，真实观察和reviewer绑定。",
+          "decision": "宿主实际像素结构报告承接，严重剧情才触发自动返修。",
+          "workbench_evidence": [
+            {
+              "path": "backend/vision_reviews.py"
+            },
+            {
+              "path": "backend/tests/test_vision_reviews.py",
+              "test": "test_vision_freezes_actual_pixels_records_report_and_never_approves_image"
+            }
+          ]
+        },
+        {
+          "source_anchor": "def prepare_observations",
+          "behavior": "严重首轮要求具体方案；不追美容；空背景阻断，部分FAIL可留人工后修。",
+          "decision": "保留问题与原候选；旧FAIL人工后修采用及交付标签没有完整宿主合同。",
+          "workbench_evidence": [
+            {
+              "path": "backend/vision_reviews.py"
+            },
+            {
+              "path": "backend/tests/test_vision_reviews.py",
+              "test": "test_vision_freezes_actual_pixels_records_report_and_never_approves_image"
+            }
+          ]
+        }
+      ],
+      "limits": "人工后修采用策略须按实际产品目标另定，不能由approved标志推断。",
+      "program_equivalence_verified": false
+    },
+    {
+      "source": "vertical-comic-preproduction/scripts/make_generation_qa.py",
+      "source_sha256": "aff6b6433720b8a2fecaef08d040c54ab8576547cc7e2fc1b3b9ebdca24378fc",
+      "disposition": "mixed",
+      "summary": "宿主冻结frame plan保留计划来源；旧比例阈值门禁未移植。 真实像素审图由宿主负责；旧QA packet和contactsheet生成器不迁为当前功能。",
+      "clauses": [
+        {
+          "source_anchor": "def expected_ratio",
+          "behavior": "从结构化ratio取期望，不从否定比例文本猜测。",
+          "decision": "宿主冻结frame plan保留计划来源；旧比例阈值门禁未移植。",
+          "workbench_evidence": [
+            {
+              "path": "backend/vision_reviews.py"
+            },
+            {
+              "path": "backend/tests/test_vision_reviews.py",
+              "test": "test_vision_freezes_actual_pixels_records_report_and_never_approves_image"
+            }
+          ]
+        },
+        {
+          "source_anchor": "def _main",
+          "behavior": "生成HOLD_UNREVIEWED、技术尺寸检查、联系表与邻格比较清单，不代人看图。",
+          "decision": "真实像素审图由宿主负责；旧QA packet和contactsheet生成器不迁为当前功能。",
+          "workbench_evidence": [
+            {
+              "path": "backend/vision_reviews.py"
+            },
+            {
+              "path": "backend/tests/test_vision_reviews.py",
+              "test": "test_vision_freezes_actual_pixels_records_report_and_never_approves_image"
+            }
+          ]
+        }
+      ],
+      "limits": "宿主报告不是旧全部技术QA及比较附件的等价产物。",
+      "program_equivalence_verified": false
+    },
+    {
+      "source": "vertical-comic-preproduction/scripts/preparation_gate_policy.py",
+      "source_sha256": "ba192aa9d7fd63b75cb8b84a7875eba144400368350a97add614e246a878f337",
+      "disposition": "mixed",
+      "summary": "保留技术完成不等于真实审核原则，不新增普通格人工停点。 宿主固定输入与stale检查承接陈旧保护；旧前期异常状态机未迁。",
+      "clauses": [
+        {
+          "source_anchor": "def exception_record",
+          "behavior": "普通格可TECHNICALLY_READY但不伪造已审；具体接触风险需TARGETED_REVIEWED。",
+          "decision": "保留技术完成不等于真实审核原则，不新增普通格人工停点。",
+          "workbench_evidence": [
+            {
+              "path": "backend/vision_reviews.py"
+            },
+            {
+              "path": "backend/tests/test_vision_reviews.py",
+              "test": "test_vision_freezes_actual_pixels_records_report_and_never_approves_image"
+            }
+          ]
+        },
+        {
+          "source_anchor": "def reviewed",
+          "behavior": "以digest识别陈旧，负证据不能被技术就绪洗掉。",
+          "decision": "宿主固定输入与stale检查承接陈旧保护；旧前期异常状态机未迁。",
+          "workbench_evidence": [
+            {
+              "path": "backend/vision_reviews.py"
+            },
+            {
+              "path": "backend/tests/test_vision_reviews.py",
+              "test": "test_vision_freezes_actual_pixels_records_report_and_never_approves_image"
+            }
+          ]
+        }
+      ],
+      "limits": "旧异常前期审查状态与代码级finding分级未等价实现。",
+      "program_equivalence_verified": false
+    },
+    {
+      "source": "vertical-comic-preproduction/scripts/preparation_review.py",
+      "source_sha256": "0265c2498cc983aa475091ab4430938d9cad6742b9016b6eb176241b702d91a3",
+      "disposition": "mixed",
+      "summary": "宿主冻结资料和结构验证承接准确输入边界。 宿主明确采用与审查记录承接结果确认；旧semantic_audit与authority_ref批量proof不迁。",
+      "clauses": [
+        {
+          "source_anchor": "def inputs_for",
+          "behavior": "按准确源序区分计划依赖输入与实际输入。",
+          "decision": "宿主冻结资料和结构验证承接准确输入边界。",
+          "workbench_evidence": [
+            {
+              "path": "backend/app.py"
+            }
+          ]
+        },
+        {
+          "source_anchor": "def save",
+          "behavior": "观察、可选委托B/package决定与不可变记录一次CAS保存。",
+          "decision": "宿主明确采用与审查记录承接结果确认；旧semantic_audit与authority_ref批量proof不迁。",
+          "workbench_evidence": [
+            {
+              "path": "backend/app.py"
+            }
+          ]
+        }
+      ],
+      "limits": "旧批量proof、复用digest技术就绪流程无等价接口。",
+      "program_equivalence_verified": false
+    },
+    {
+      "source": "vertical-comic-preproduction/scripts/production_decisions.py",
+      "source_sha256": "ebc8403eae01559de17c26b0fc0ce302d4bf1531ddbe7ec64d926114fb50dce9",
+      "disposition": "mixed",
+      "summary": "宿主保存报告和独立采用；尚无旧逐问题处置合同。 交付readiness要求准确审核证据；不将图片approved声称为旧人工后修交付标签。",
+      "clauses": [
+        {
+          "source_anchor": "def decision_errors",
+          "behavior": "逐问题JSON pointer绑定QA，fix_now、opportunistic、manual互斥并覆盖。",
+          "decision": "宿主保存报告和独立采用；尚无旧逐问题处置合同。",
+          "workbench_evidence": [
+            {
+              "path": "backend/delivery_readiness.py"
+            },
+            {
+              "path": "backend/tests/test_delivery_readiness.py",
+              "test": "test_issues_and_unknown_cancelled_call_block_delivery"
+            }
+          ]
+        },
+        {
+          "source_anchor": "def selected",
+          "behavior": "采用绑定准确版本与decision，严重空背景不能采用为可交付。",
+          "decision": "交付readiness要求准确审核证据；不将图片approved声称为旧人工后修交付标签。",
+          "workbench_evidence": [
+            {
+              "path": "backend/delivery_readiness.py"
+            },
+            {
+              "path": "backend/tests/test_delivery_readiness.py",
+              "test": "test_issues_and_unknown_cancelled_call_block_delivery"
+            }
+          ]
+        }
+      ],
+      "limits": "DELIVERABLE/MANUAL_RETOUCH/MANUAL_PRIORITY等完整分类未迁。",
+      "program_equivalence_verified": false
+    },
+    {
+      "source": "vertical-comic-preproduction/scripts/review_followup.py",
+      "source_sha256": "1c7422ac86e1670ce0b65d3e6cf5c938546acaadf6db9082e5c21f61fa9e04a6",
+      "disposition": "mixed",
+      "summary": "宿主postprocess按已授权策略推进并保留原review与repair ID。 宿主恢复已保存报告不重发调用；旧委托proof与observation replay接口不迁。",
+      "clauses": [
+        {
+          "source_anchor": "def follow",
+          "behavior": "真实QA保存后按原operation_id登记proof和repair_request，不新增image call授权。",
+          "decision": "宿主postprocess按已授权策略推进并保留原review与repair ID。",
+          "workbench_evidence": [
+            {
+              "path": "backend/image_postprocess.py"
+            },
+            {
+              "path": "backend/tests/test_image_postprocess.py",
+              "test": "test_authorized_generate_review_one_story_repair_and_recheck_keeps_both_candidates"
+            }
+          ]
+        },
+        {
+          "source_anchor": "def submit",
+          "behavior": "同观察幂等重放，followup失败可重试而不重复QA。",
+          "decision": "宿主恢复已保存报告不重发调用；旧委托proof与observation replay接口不迁。",
+          "workbench_evidence": [
+            {
+              "path": "backend/image_postprocess.py"
+            },
+            {
+              "path": "backend/tests/test_image_postprocess.py",
+              "test": "test_authorized_generate_review_one_story_repair_and_recheck_keeps_both_candidates"
+            }
+          ]
+        }
+      ],
+      "limits": "恢复幂等不代表旧phase proof注册程序等价。",
+      "program_equivalence_verified": false
+    },
+    {
+      "source": "vertical-comic-preproduction/scripts/review_pipeline.py",
+      "source_sha256": "788d33462a48b6e60ab6d5cd53414af920e4a801d6f3d597c836ce4f95713d4c",
+      "disposition": "mixed",
+      "summary": "宿主原返回、结构报告、冻结manifest分离保留证据。 宿主审核与采用独立且保留版本；旧一体CAS覆盖器未移植，不借相似字段宣称完成。",
+      "clauses": [
+        {
+          "source_anchor": "def overlay",
+          "behavior": "仅覆盖观察字段，模板期望、路径与hash受保护。",
+          "decision": "宿主原返回、结构报告、冻结manifest分离保留证据。",
+          "workbench_evidence": [
+            {
+              "path": "backend/vision_reviews.py"
+            },
+            {
+              "path": "backend/tests/test_vision_reviews.py",
+              "test": "test_vision_freezes_actual_pixels_records_report_and_never_approves_image"
+            }
+          ]
+        },
+        {
+          "source_anchor": "def save",
+          "behavior": "绑定原attempt、base_qa和digest，QA、decision、adoption一次CAS，比较未完不升PASS。",
+          "decision": "宿主审核与采用独立且保留版本；旧一体CAS覆盖器未移植，不借相似字段宣称完成。",
+          "workbench_evidence": [
+            {
+              "path": "backend/vision_reviews.py"
+            },
+            {
+              "path": "backend/tests/test_vision_reviews.py",
+              "test": "test_vision_freezes_actual_pixels_records_report_and_never_approves_image"
+            }
+          ]
+        }
+      ],
+      "limits": "旧完整比较门禁与QA修订CAS合同未迁。",
+      "program_equivalence_verified": false
+    },
+    {
+      "source": "vertical-comic-preproduction/scripts/review_policy.py",
+      "source_sha256": "07d9712f871a452b69aa243dfe03576a1d1aa053af805ed8cbcbb7fd0a7c6caf",
+      "disposition": "mixed",
+      "summary": "宿主明确开始、版本采用与审核承接可见授权；旧细粒度委托proof不迁。 保留授权范围不静默扩大的原则，不引入源文件全部人工问询。",
+      "clauses": [
+        {
+          "source_anchor": "def decision_errors",
+          "behavior": "核对真实委托来源、书话、格、phase、排除项及保留亲审。",
+          "decision": "宿主明确开始、版本采用与审核承接可见授权；旧细粒度委托proof不迁。",
+          "workbench_evidence": [
+            {
+              "path": "backend/app.py"
+            }
+          ]
+        },
+        {
+          "source_anchor": "def production_questions",
+          "behavior": "仅真实取舍、设计变化、额外预算或保留亲审事项提问。",
+          "decision": "保留授权范围不静默扩大的原则，不引入源文件全部人工问询。",
+          "workbench_evidence": [
+            {
+              "path": "backend/app.py"
+            }
+          ]
+        }
+      ],
+      "limits": "没有实现旧accepted item消息证据、event hash及技术操作授权格式。",
+      "program_equivalence_verified": false
+    },
+    {
+      "source": "vertical-comic-preproduction/scripts/review_queue.py",
+      "source_sha256": "e27e29cdee915fe5e89d4ec0c6d3c014d7d2c67c52abb28b8a7b306f391ad2c9",
+      "disposition": "mixed",
+      "summary": "宿主批次和postprocess独立推进承接调度职责，但不是旧队列排序器。 保留完成状态与真实报告分离；旧QA复用资格未由token推断。",
+      "clauses": [
+        {
+          "source_anchor": "def build_queue",
+          "behavior": "依源序、依赖和状态生成队列；GENERATED审图、FAIL诊断、PASS核验复用。",
+          "decision": "宿主批次和postprocess独立推进承接调度职责，但不是旧队列排序器。",
+          "workbench_evidence": [
+            {
+              "path": "backend/image_postprocess.py"
+            },
+            {
+              "path": "backend/tests/test_image_postprocess.py",
+              "test": "test_authorized_generate_review_one_story_repair_and_recheck_keeps_both_candidates"
+            }
+          ]
+        },
+        {
+          "source_anchor": "def build_queue",
+          "behavior": "processed token仅去重，不能证明PASS。",
+          "decision": "保留完成状态与真实报告分离；旧QA复用资格未由token推断。",
+          "workbench_evidence": [
+            {
+              "path": "backend/image_postprocess.py"
+            },
+            {
+              "path": "backend/tests/test_image_postprocess.py",
+              "test": "test_authorized_generate_review_one_story_repair_and_recheck_keeps_both_candidates"
+            }
+          ]
+        }
+      ],
+      "limits": "未移植旧完整优先级和PASS复用队列。",
+      "program_equivalence_verified": false
+    },
+    {
+      "source": "vertical-comic-preproduction/scripts/review_reuse.py",
+      "source_sha256": "8956dd500aecbe32b6274e4f1b35280632f50f9b05daa8d70695e8c7f8921095",
+      "disposition": "mixed",
+      "summary": "宿主冻结输入和stale保护承接部分不可换输入约束。 宿主已完成postprocess恢复避免重发；旧递归QA memo及gate复用不迁。",
+      "clauses": [
+        {
+          "source_anchor": "def fingerprint",
+          "behavior": "递归绑定原图、QA、包、参考、规则、prompt及适用比较的内容hash。",
+          "decision": "宿主冻结输入和stale保护承接部分不可换输入约束。",
+          "workbench_evidence": [
+            {
+              "path": "backend/vision_reviews.py"
+            },
+            {
+              "path": "backend/tests/test_vision_reviews.py",
+              "test": "test_vision_freezes_actual_pixels_records_report_and_never_approves_image"
+            }
+          ]
+        },
+        {
+          "source_anchor": "def cached_qa",
+          "behavior": "单gate session只缓存无error QA，复用不授批准。",
+          "decision": "宿主已完成postprocess恢复避免重发；旧递归QA memo及gate复用不迁。",
+          "workbench_evidence": [
+            {
+              "path": "backend/vision_reviews.py"
+            },
+            {
+              "path": "backend/tests/test_vision_reviews.py",
+              "test": "test_vision_freezes_actual_pixels_records_report_and_never_approves_image"
+            }
+          ]
+        }
+      ],
+      "limits": "不可声称宿主缓存覆盖旧所有比较与规则hash。",
+      "program_equivalence_verified": false
+    },
+    {
+      "source": "vertical-comic-preproduction/assets/templates/ZIP交接说明模板.md",
+      "source_sha256": "a81595327d65d78b58653503019513f980663f4689f10508e2442a5a59c3a1e3",
+      "disposition": "legacy_mechanism_not_ported",
+      "summary": "当前工作台不提供此可执行ZIP接包合同，模板不作为已实现功能。 保留真实范围与未知证据原则；数据库备份和选图下载均不等于此接包包。",
+      "clauses": [
+        {
+          "source_anchor": "## 接收",
+          "behavior": "完整包、分卷或目录接包，工具自包含且不依赖外部profile。",
+          "decision": "当前工作台不提供此可执行ZIP接包合同，模板不作为已实现功能。",
+          "workbench_evidence": [
+            {
+              "path": "docs/backup-restore.md"
+            },
+            {
+              "path": "backend/tests/test_backup_restore.py",
+              "test": "test_synthetic_restore_verifies_originals_versions_and_pi_boundaries"
+            }
+          ]
+        },
+        {
+          "source_anchor": "## 范围与依据",
+          "behavior": "源序、批准、预算与UNKNOWN在交接中保留。",
+          "decision": "保留真实范围与未知证据原则；数据库备份和选图下载均不等于此接包包。",
+          "workbench_evidence": [
+            {
+              "path": "docs/backup-restore.md"
+            },
+            {
+              "path": "backend/tests/test_backup_restore.py",
+              "test": "test_synthetic_restore_verifies_originals_versions_and_pi_boundaries"
+            }
+          ]
+        }
+      ],
+      "limits": "无旧自包含执行器、跨机接包与分卷恢复保证。",
+      "program_equivalence_verified": false
+    },
+    {
+      "source": "vertical-comic-preproduction/references/delivery-contract.md",
+      "source_sha256": "e861aa2d708e52d399a7b0d0620fa053e6defe2ec6b908500f7757a6008952cc",
+      "disposition": "mixed",
+      "summary": "旧minimal合同要求完整源范围、原字节与CSV一致封包；当前选图ZIP/readiness不等价。当前用户及原Pi计划没有明确要求新增该封包器，仅在未来另行选择承诺旧合同后才需实现。",
+      "clauses": [
+        {
+          "source_anchor": "## 新成品：图片和一份CSV",
+          "behavior": "新minimal成品只含按话和源格归位的原图及一份图片清单，不要求旧final D深验。",
+          "decision": "最小必要缺口是完整范围、原字节与单CSV的一致封包验证；当前选图ZIP不满足。",
+          "workbench_evidence": [
+            {
+              "path": "backend/delivery_readiness.py"
+            },
+            {
+              "path": "backend/tests/test_delivery_readiness.py",
+              "test": "test_issues_and_unknown_cancelled_call_block_delivery"
+            }
+          ]
+        },
+        {
+          "source_anchor": "## 两类交付",
+          "behavior": "前期900MB可分卷，成品无限单ZIP；旧完整路径与新minimal分流。",
+          "decision": "不把旧前期运输机制或旧D门禁强加新成品；readiness仅提供DB证据，不能替代实际ZIP。",
+          "workbench_evidence": [
+            {
+              "path": "backend/delivery_readiness.py"
+            },
+            {
+              "path": "backend/tests/test_delivery_readiness.py",
+              "test": "test_issues_and_unknown_cancelled_call_block_delivery"
+            }
+          ]
+        }
+      ],
+      "limits": [
+        "单CSV、完整源序与实际封包校验尚需实现，旧前期可执行运输不在此最小缺口内。",
+        "未等价的旧源交付条款不等于当前目标新增必做事项；不宣称已等价，也不从源存在推导新增范围。"
+      ],
+      "program_equivalence_verified": false,
+      "required_by_current_plan": false,
+      "requirement_basis": "legacy_source_contract_only_no_explicit_current_user_or_plan_requirement"
+    },
+    {
+      "source": "vertical-comic-preproduction/references/direct-delivery.md",
+      "source_sha256": "ccc39137181261ab480dfac23223efa5dfe510054d26dc4c4b9c0619f21d55ac",
+      "disposition": "legacy_mechanism_not_ported",
+      "summary": "宿主固定输入与明确采用保留输入确认原则；不移植旧release执行协议。 工作台DB恢复是不同合同；旧自动接包及模板绑定程序未迁。",
+      "clauses": [
+        {
+          "source_anchor": "## 一次最终执行输入审查，避免分次签哈希",
+          "behavior": "最终输入digest批准后演练才release。",
+          "decision": "宿主固定输入与明确采用保留输入确认原则；不移植旧release执行协议。",
+          "workbench_evidence": [
+            {
+              "path": "docs/backup-restore.md"
+            },
+            {
+              "path": "backend/tests/test_backup_restore.py",
+              "test": "test_synthetic_restore_verifies_originals_versions_and_pi_boundaries"
+            }
+          ]
+        },
+        {
+          "source_anchor": "## 可移植输入及自动接包",
+          "behavior": "相对引用和规则hash、runtime绑定只改地址不改创意或预算。",
+          "decision": "工作台DB恢复是不同合同；旧自动接包及模板绑定程序未迁。",
+          "workbench_evidence": [
+            {
+              "path": "docs/backup-restore.md"
+            },
+            {
+              "path": "backend/tests/test_backup_restore.py",
+              "test": "test_synthetic_restore_verifies_originals_versions_and_pi_boundaries"
+            }
+          ]
+        }
+      ],
+      "limits": "未验证跨机可执行ZIP，不能以本机备份测试替代。",
+      "program_equivalence_verified": false
+    },
+    {
+      "source": "vertical-comic-preproduction/references/handoff-transport.md",
+      "source_sha256": "b89319ea59ef616d87d5a31dde8103d612f36044ed4c77568ba2a7a7d1819a02",
+      "disposition": "legacy_mechanism_not_ported",
+      "summary": "旧源的新minimal与旧D运输合同各有适用范围；当前工作台不承诺单CSV成品封包或旧跨机运输，现有下载和备份不等价。",
+      "clauses": [
+        {
+          "source_anchor": "# 微信交接运输",
+          "behavior": "按SHA去重对象，900MB连续分卷，恢复文件字节而不保证原ZIP字节。",
+          "decision": "旧运输机制不迁，当前无相应API。",
+          "workbench_evidence": [
+            {
+              "path": "docs/backup-restore.md"
+            },
+            {
+              "path": "backend/tests/test_backup_restore.py",
+              "test": "test_synthetic_restore_verifies_originals_versions_and_pi_boundaries"
+            }
+          ]
+        },
+        {
+          "source_anchor": "# 微信交接运输",
+          "behavior": "缺卷或损坏拒绝，运输不签批准；文内旧双CSV与新单CSV有版本差异。",
+          "decision": "保留不伪造批准原则；新minimal交付按单CSV合同，不能强加历史双CSV。",
+          "workbench_evidence": [
+            {
+              "path": "docs/backup-restore.md"
+            },
+            {
+              "path": "backend/tests/test_backup_restore.py",
+              "test": "test_synthetic_restore_verifies_originals_versions_and_pi_boundaries"
+            }
+          ]
+        }
+      ],
+      "limits": [
+        "停服复制并非分卷运输，未声称恢复兼容。",
+        "未等价的旧源交付条款不等于当前目标新增必做事项；不宣称已等价，也不从源存在推导新增范围。"
+      ],
+      "program_equivalence_verified": false,
+      "required_by_current_plan": false,
+      "requirement_basis": "legacy_source_contract_only_no_explicit_current_user_or_plan_requirement"
+    },
+    {
+      "source": "vertical-comic-preproduction/references/split-production.md",
+      "source_sha256": "429f3f6fec69fb232570b0c100d8331dd31f6168107b6ddafe2f6c011a303223",
+      "disposition": "mixed",
+      "summary": "宿主预览后明确start承接生产授权边界。 批次依赖和恢复承接运行原则；旧包按数据导入的适配器未实现，不执行旧代码。",
+      "clauses": [
+        {
+          "source_anchor": "## 前期职责",
+          "behavior": "前期授权不自动包含正文生产。",
+          "decision": "宿主预览后明确start承接生产授权边界。",
+          "workbench_evidence": [
+            {
+              "path": "backend/image_batches.py"
+            }
+          ]
+        },
+        {
+          "source_anchor": "## 接包职责",
+          "behavior": "整话独立就绪和真实依赖局部等待，预算保留。",
+          "decision": "批次依赖和恢复承接运行原则；旧包按数据导入的适配器未实现，不执行旧代码。",
+          "workbench_evidence": [
+            {
+              "path": "backend/image_batches.py"
+            }
+          ]
+        }
+      ],
+      "limits": "旧接包格式没有兼容承诺，不新增半话关卡。",
+      "program_equivalence_verified": false
+    },
+    {
+      "source": "vertical-comic-preproduction/references/zip-handoff.md",
+      "source_sha256": "2abf70fd33e4df92caf46e6e918d659832c9f6b36dfdddd1f948e584cca70095",
+      "disposition": "legacy_mechanism_not_ported",
+      "summary": "工作台使用本机实体与版本，未迁旧ZIP索引reader。 保留演练与真实执行分离原则；不把备份演练称为旧ZIP演练或正式发送。",
+      "clauses": [
+        {
+          "source_anchor": "## 索引与兼容边界",
+          "behavior": "v1 halves与v2 full_episode索引不得混用。",
+          "decision": "工作台使用本机实体与版本，未迁旧ZIP索引reader。",
+          "workbench_evidence": [
+            {
+              "path": "docs/backup-restore.md"
+            },
+            {
+              "path": "backend/tests/test_backup_restore.py",
+              "test": "test_synthetic_restore_verifies_originals_versions_and_pi_boundaries"
+            }
+          ]
+        },
+        {
+          "source_anchor": "## 候选、演练与发布",
+          "behavior": "冻结执行器只读演练，零调用不代表授权生产。",
+          "decision": "保留演练与真实执行分离原则；不把备份演练称为旧ZIP演练或正式发送。",
+          "workbench_evidence": [
+            {
+              "path": "docs/backup-restore.md"
+            },
+            {
+              "path": "backend/tests/test_backup_restore.py",
+              "test": "test_synthetic_restore_verifies_originals_versions_and_pi_boundaries"
+            }
+          ]
+        }
+      ],
+      "limits": "readset恢复、return_replay与旧D深验未迁，新minimal成品不因此要求D。",
+      "program_equivalence_verified": false
+    },
+    {
+      "source": "vertical-comic-preproduction/scripts/deadline_delivery.py",
+      "source_sha256": "0595efea3af71c6a795853bff20c6551296a935ee18dcbece60eedd096cc9838",
+      "disposition": "legacy_mechanism_not_ported",
+      "summary": "旧交付截止时间控制器及完整成品封包未迁；当前批次时钟与离线备份各有独立边界，不由旧minimal合同新增本项目必需工作。",
+      "clauses": [
+        {
+          "source_anchor": "def export",
+          "behavior": "只读snapshot按真实采用和QA导出完整或恢复材料，不改生产state。",
+          "decision": "当前没有旧deadline导出器；完整成品封包缺口另以minimal合同处置。",
+          "workbench_evidence": [
+            {
+              "path": "backend/image_batches.py"
+            }
+          ]
+        },
+        {
+          "source_anchor": "def watch",
+          "behavior": "独立进程阈值轮询封包，不生图，暂停不等于自动打包。",
+          "decision": "不新增旧watch守护进程；4/7h有效生产预算不冒充交付wall deadline。",
+          "workbench_evidence": [
+            {
+              "path": "backend/image_batches.py"
+            }
+          ]
+        }
+      ],
+      "limits": [
+        "旧截止交付进程未迁，不由源存在推断项目必需新服务。",
+        "未等价的旧源交付条款不等于当前目标新增必做事项；不宣称已等价，也不从源存在推导新增范围。"
+      ],
+      "program_equivalence_verified": false,
+      "required_by_current_plan": false,
+      "requirement_basis": "legacy_source_contract_only_no_explicit_current_user_or_plan_requirement"
+    },
+    {
+      "source": "vertical-comic-preproduction/scripts/delivery_contract.py",
+      "source_sha256": "8d237cab4acaabf606b590be5dd52682499a342db9dd67a9d24358a403b9257f",
+      "disposition": "mixed",
+      "summary": "保留准确范围与不静默变合同；旧职责/运输限制不直接移植。 宿主readiness承接部分证据；完整成品实际封包验证仍缺，当前下载不能证明正式交付。",
+      "clauses": [
+        {
+          "source_anchor": "def validate_requirements",
+          "behavior": "职责与scope state绑定；前期限额、成品单ZIP、最多一次重打包。",
+          "decision": "保留准确范围与不静默变合同；旧职责/运输限制不直接移植。",
+          "workbench_evidence": [
+            {
+              "path": "backend/delivery_readiness.py"
+            },
+            {
+              "path": "backend/tests/test_delivery_readiness.py",
+              "test": "test_issues_and_unknown_cancelled_call_block_delivery"
+            }
+          ]
+        },
+        {
+          "source_anchor": "def assert_completion",
+          "behavior": "真实发送的artifact、receipt及state/source绑定才算完成，容量估计不是实际ZIP。",
+          "decision": "宿主readiness承接部分证据；完整成品实际封包验证仍缺，当前下载不能证明正式交付。",
+          "workbench_evidence": [
+            {
+              "path": "backend/delivery_readiness.py"
+            },
+            {
+              "path": "backend/tests/test_delivery_readiness.py",
+              "test": "test_issues_and_unknown_cancelled_call_block_delivery"
+            }
+          ]
+        }
+      ],
+      "limits": "应补最小可核验成品包，不必复制旧全部receipt与重打包账本。",
+      "program_equivalence_verified": false
+    },
+    {
+      "source": "vertical-comic-preproduction/scripts/delivery_csv.py",
+      "source_sha256": "cfe2654e70c4c151b6d51a65c03a9f511ff14596a79fe1a43eb560de0dac8ddb",
+      "disposition": "mixed",
+      "summary": "旧CSV程序的可读性与安全编码行为未由当前宿主实现，不能以DB核对替代。当前范围未要求CSV导出，不由源存在新增导出子系统。",
+      "clauses": [
+        {
+          "source_anchor": "def encode",
+          "behavior": "UTF8 BOM、CRLF、标准CSV引用并转义公式前缀。",
+          "decision": "宿主暂无CSV导出；最小成品清单应保留可读性及安全编码规则。",
+          "workbench_evidence": [
+            {
+              "path": "backend/app.py"
+            }
+          ]
+        },
+        {
+          "source_anchor": "def render",
+          "behavior": "旧双CSV按实际采用版本、原问题和missing输出，不生成QA。",
+          "decision": "新minimal只需一份图片清单；保留真实版本与缺项，不复制旧双文件结构。",
+          "workbench_evidence": [
+            {
+              "path": "backend/app.py"
+            }
+          ]
+        }
+      ],
+      "limits": [
+        "完整成品清单尚未实现；CSV不是补造QA或通过状态的渠道。",
+        "未等价的旧源交付条款不等于当前目标新增必做事项；不宣称已等价，也不从源存在推导新增范围。"
+      ],
+      "program_equivalence_verified": false,
+      "required_by_current_plan": false,
+      "requirement_basis": "legacy_source_contract_only_no_explicit_current_user_or_plan_requirement"
+    },
+    {
+      "source": "vertical-comic-preproduction/scripts/delivery_publish.py",
+      "source_sha256": "434e73c9dffe1f5bd3e1cd6d391041c2fbeb12cd7a8ee7775e522fc6739ce006",
+      "disposition": "mixed",
+      "summary": "旧源发布器的原子交付/一致性校验未迁；若未来明确承诺相应封包合同才需实现，不把现有文件持久化视为该发布器等价。",
+      "clauses": [
+        {
+          "source_anchor": "def _publish",
+          "behavior": "新输出目录，snapshot一致，失败或UNKNOWN不盲目重复；修改后重打包受限。",
+          "decision": "保留不覆盖既有结果及未知不冒成功原则；旧publisher与重打包账本未迁。",
+          "workbench_evidence": [
+            {
+              "path": "backend/delivery_readiness.py"
+            },
+            {
+              "path": "backend/tests/test_delivery_readiness.py",
+              "test": "test_issues_and_unknown_cancelled_call_block_delivery"
+            }
+          ]
+        },
+        {
+          "source_anchor": "def verify_production_files",
+          "behavior": "对精确member、hash、CRC及当前采用逐项验证。",
+          "decision": "这是最小成品封包需要的实际一致性证据；readiness不读取图片字节，不能替代。",
+          "workbench_evidence": [
+            {
+              "path": "backend/delivery_readiness.py"
+            },
+            {
+              "path": "backend/tests/test_delivery_readiness.py",
+              "test": "test_issues_and_unknown_cancelled_call_block_delivery"
+            }
+          ]
+        }
+      ],
+      "limits": [
+        "实际封包成员与原字节验证缺口待补，旧前期运输发布分支不必一并迁。",
+        "未等价的旧源交付条款不等于当前目标新增必做事项；不宣称已等价，也不从源存在推导新增范围。"
+      ],
+      "program_equivalence_verified": false,
+      "required_by_current_plan": false,
+      "requirement_basis": "legacy_source_contract_only_no_explicit_current_user_or_plan_requirement"
+    },
+    {
+      "source": "vertical-comic-preproduction/scripts/handoff_delivery.py",
+      "source_sha256": "0f5d73bff74d638f7098bc3808eab212daa886b9cfc836113a577848860b050c",
+      "disposition": "legacy_mechanism_not_ported",
+      "summary": "宿主冻结输入和依赖解析保留原则，旧handoff闭合器不迁。 停服数据库恢复不实现旧RV binder；不执行旧runtime或自动装配候选。",
+      "clauses": [
+        {
+          "source_anchor": "def closure",
+          "behavior": "准备、UNKNOWN、复用适用范围和真实前序依赖均须闭合。",
+          "decision": "宿主冻结输入和依赖解析保留原则，旧handoff闭合器不迁。",
+          "workbench_evidence": [
+            {
+              "path": "docs/backup-restore.md"
+            },
+            {
+              "path": "backend/tests/test_backup_restore.py",
+              "test": "test_synthetic_restore_verifies_originals_versions_and_pi_boundaries"
+            }
+          ]
+        },
+        {
+          "source_anchor": "def bind",
+          "behavior": "验证runtime模板字节及权限，只修改本地root，不改审批和预算。",
+          "decision": "停服数据库恢复不实现旧RV binder；不执行旧runtime或自动装配候选。",
+          "workbench_evidence": [
+            {
+              "path": "docs/backup-restore.md"
+            },
+            {
+              "path": "backend/tests/test_backup_restore.py",
+              "test": "test_synthetic_restore_verifies_originals_versions_and_pi_boundaries"
+            }
+          ]
+        }
+      ],
+      "limits": "旧input_review、assembly executor及地址绑定无兼容保证。",
+      "program_equivalence_verified": false
+    },
+    {
+      "source": "vertical-comic-preproduction/scripts/handoff_scope.py",
+      "source_sha256": "cc6456f86f815c27187918906bd53208aa9b99dcb543e49787197286c9a122f5",
+      "disposition": "host_replaced",
+      "summary": "工作台episode、panel和package依赖取代外部JSON范围reader。 保留准确源范围语义，不增加半话审查关卡或旧格式兼容声明。",
+      "clauses": [
+        {
+          "source_anchor": "def episode_mode",
+          "behavior": "准确区分v1/v2/window范围。",
+          "decision": "工作台episode、panel和package依赖取代外部JSON范围reader。",
+          "workbench_evidence": [
+            {
+              "path": "backend/image_dependencies.py"
+            }
+          ]
+        },
+        {
+          "source_anchor": "def validate_episode",
+          "behavior": "旧ceil(N/2)半话范围不可与新分类混合。",
+          "decision": "保留准确源范围语义，不增加半话审查关卡或旧格式兼容声明。",
+          "workbench_evidence": [
+            {
+              "path": "backend/image_dependencies.py"
+            }
+          ]
+        }
+      ],
+      "limits": "替代运行职责不等于可读取或验证旧索引。",
+      "program_equivalence_verified": false
+    },
+    {
+      "source": "vertical-comic-preproduction/scripts/handoff_transport.py",
+      "source_sha256": "ece0dcadf2747b66118fd87f1f100fd442e02aa2a8c7a206d7e145ddc0331265",
+      "disposition": "legacy_mechanism_not_ported",
+      "summary": "旧运输协议未迁，数据库复制不是等价替代。 不声称现有下载提供分卷接包；备份的独立复制校验仅是宿主另一能力。",
+      "clauses": [
+        {
+          "source_anchor": "def export",
+          "behavior": "对正式包去重分卷，以实际压后尺寸和恢复检查生成运输证据。",
+          "decision": "旧运输协议未迁，数据库复制不是等价替代。",
+          "workbench_evidence": [
+            {
+              "path": "docs/backup-restore.md"
+            },
+            {
+              "path": "backend/tests/test_backup_restore.py",
+              "test": "test_synthetic_restore_verifies_originals_versions_and_pi_boundaries"
+            }
+          ]
+        },
+        {
+          "source_anchor": "def restore",
+          "behavior": "核对同set完整卷序列、hash、安全路径、磁盘空间，恢复检查后发布。",
+          "decision": "不声称现有下载提供分卷接包；备份的独立复制校验仅是宿主另一能力。",
+          "workbench_evidence": [
+            {
+              "path": "docs/backup-restore.md"
+            },
+            {
+              "path": "backend/tests/test_backup_restore.py",
+              "test": "test_synthetic_restore_verifies_originals_versions_and_pi_boundaries"
+            }
+          ]
+        }
+      ],
+      "limits": "无工作台运输分卷API和旧receipt互操作验证。",
+      "program_equivalence_verified": false
+    },
+    {
+      "source": "vertical-comic-preproduction/scripts/handoff_zip.py",
+      "source_sha256": "574ee77f582e7e6c36fdd69099b11434f7fb9bef2707fd929ee147510de5026b",
+      "disposition": "legacy_mechanism_not_ported",
+      "summary": "保留安全文件边界原则，不移植旧可执行ZIP reader。 工作台备份演练不等于旧执行器演练或release，不声称跨机生产可用。",
+      "clauses": [
+        {
+          "source_anchor": "def archive_members",
+          "behavior": "拒绝不安全路径、大小写碰撞与symlink；文件清单绑定hash及字节数。",
+          "decision": "保留安全文件边界原则，不移植旧可执行ZIP reader。",
+          "workbench_evidence": [
+            {
+              "path": "docs/backup-restore.md"
+            },
+            {
+              "path": "backend/tests/test_backup_restore.py",
+              "test": "test_synthetic_restore_verifies_originals_versions_and_pi_boundaries"
+            }
+          ]
+        },
+        {
+          "source_anchor": "def rehearse",
+          "behavior": "冻结执行器只读audit精确范围与readset；不授dispatch；release区分content_only和真实演练。",
+          "decision": "工作台备份演练不等于旧执行器演练或release，不声称跨机生产可用。",
+          "workbench_evidence": [
+            {
+              "path": "docs/backup-restore.md"
+            },
+            {
+              "path": "backend/tests/test_backup_restore.py",
+              "test": "test_synthetic_restore_verifies_originals_versions_and_pi_boundaries"
+            }
+          ]
+        }
+      ],
+      "limits": "旧audit_index、release、transport与接包执行未迁。",
+      "program_equivalence_verified": false
+    },
+    {
+      "source": "vertical-comic-preproduction/scripts/lean_delivery.py",
+      "source_sha256": "0ae3e85ddae9e54252672f03cbe607af49c8b6522fc214753fde958d77b7a289",
+      "disposition": "mixed",
+      "summary": "旧极简成品封包未等价；当前readiness仅承接数据库范围证据，下载仅所选采用图片。完整封包需另有范围依据，不自动扩成本项目必需。",
+      "clauses": [
+        {
+          "source_anchor": "def inventory",
+          "behavior": "全源序唯一source ID，未完与UNKNOWN不能冒完整，缺格须真实凭证。",
+          "decision": "readiness承接DB范围证据；完整成品包仍须绑定当前采用与真实缺项。",
+          "workbench_evidence": [
+            {
+              "path": "backend/delivery_readiness.py"
+            },
+            {
+              "path": "backend/tests/test_delivery_readiness.py",
+              "test": "test_issues_and_unknown_cancelled_call_block_delivery"
+            }
+          ]
+        },
+        {
+          "source_anchor": "def pack",
+          "behavior": "只原图和单CSV，写时hash/stat，readback CRC/hash，ZIP64；finish绑定准确receipt。",
+          "decision": "补最小可核验完整成品封包即可，不要求旧full QA或新人工批准。",
+          "workbench_evidence": [
+            {
+              "path": "backend/delivery_readiness.py"
+            },
+            {
+              "path": "backend/tests/test_delivery_readiness.py",
+              "test": "test_issues_and_unknown_cancelled_call_block_delivery"
+            }
+          ]
+        }
+      ],
+      "limits": [
+        "当前所选图片ZIP无完整源序单CSV与readback验证，不能宣称minimal交付完成。",
+        "未等价的旧源交付条款不等于当前目标新增必做事项；不宣称已等价，也不从源存在推导新增范围。"
+      ],
+      "program_equivalence_verified": false,
+      "required_by_current_plan": false,
+      "requirement_basis": "legacy_source_contract_only_no_explicit_current_user_or_plan_requirement"
+    },
+    {
+      "source": "vertical-comic-preproduction/scripts/panel_delivery.py",
+      "source_sha256": "18124fb5c9d1d27cb1fe9df6869e83b8052e52dd221b9737dbf9bd6e1941a1d5",
+      "disposition": "mixed",
+      "summary": "旧逐格交付清单/成品封包与当前采用图片下载有不同合同；当前未承诺单CSV封包，不能从旧源存在推导新增范围。",
+      "clauses": [
+        {
+          "source_anchor": "def build",
+          "behavior": "源序、选定attempt、QA、decision和一轮预算绑定，UNKNOWN保留。",
+          "decision": "readiness承接当前来源、准确视觉报告、采用及未知阻断；不冒充旧完整D合同。",
+          "workbench_evidence": [
+            {
+              "path": "backend/delivery_readiness.py"
+            },
+            {
+              "path": "backend/tests/test_delivery_readiness.py",
+              "test": "test_issues_and_unknown_cancelled_call_block_delivery"
+            }
+          ]
+        },
+        {
+          "source_anchor": "def _export_candidate",
+          "behavior": "临时新目录写原图、CSV、问题与索引，核对全部引用后rename发布。",
+          "decision": "新minimal成品采用单CSV封包即可；旧full exporter与人工后修分类不直接移植。",
+          "workbench_evidence": [
+            {
+              "path": "backend/delivery_readiness.py"
+            },
+            {
+              "path": "backend/tests/test_delivery_readiness.py",
+              "test": "test_issues_and_unknown_cancelled_call_block_delivery"
+            }
+          ]
+        }
+      ],
+      "limits": [
+        "旧D gate及MANUAL outcomes未迁；实际完整封包仍为最小待补能力。",
+        "未等价的旧源交付条款不等于当前目标新增必做事项；不宣称已等价，也不从源存在推导新增范围。"
+      ],
+      "program_equivalence_verified": false,
+      "required_by_current_plan": false,
+      "requirement_basis": "legacy_source_contract_only_no_explicit_current_user_or_plan_requirement"
+    }
+  ]
+}

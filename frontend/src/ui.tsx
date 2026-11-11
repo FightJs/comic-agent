@@ -1,5 +1,5 @@
 import { useEffect, useRef, type ReactNode } from "react";
-import { AlertCircle, FolderOpen, X, LoaderCircle } from "lucide-react";
+import { AlertCircle, FolderOpen, X } from "lucide-react";
 import { sourceLabel } from "./logic";
 export function Badge({ source }: { source: string }) {
   return (
@@ -36,8 +36,11 @@ export function ErrorNote({ message }: { message: string }) {
 }
 export function Busy() {
   return (
-    <div className="loading" role="status">
-      <LoaderCircle className="spin" size={18} /> 正在读取本地数据…
+    <div className="loading" role="status" aria-live="polite">
+      <span className="loading-label">正在读取本地数据…</span>
+      <div className="loading-skeleton" aria-hidden="true">
+        <span /><span /><span /><span />
+      </div>
     </div>
   );
 }
@@ -68,6 +71,7 @@ export function Drawer({
       className="drawer-backdrop"
       aria-label={title}
       onCancel={(e) => {
+        e.stopPropagation();
         e.preventDefault();
         onClose();
       }}

@@ -163,10 +163,7 @@ export function AnnotationCanvas({
     const obs = new ResizeObserver(([e]) =>
       setSize({
         width: e.contentRect.width,
-        height: Math.max(
-          280,
-          window.innerHeight - e.target.getBoundingClientRect().top - 115,
-        ),
+        height: Math.max(1, e.contentRect.height),
       }),
     );
     obs.observe(container.current);

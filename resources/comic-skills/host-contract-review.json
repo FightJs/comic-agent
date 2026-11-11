@@ -1,0 +1,198 @@
+{
+  "format": "comic-host-contract-review/v1",
+  "changes_runtime_packages": false,
+  "scope": "Three source-contract audits only; partial mappings are not migrated scripts or new runtime instructions.",
+  "sources": [
+    {
+      "source": "vertical-comic-preproduction/references/installation-update.md",
+      "source_sha256": "f9bc2f69ee48d164078a2af22e6df9d0f9dd0fea39509c77e4272306a2843792",
+      "status": "reviewed_partial_host_mapping",
+      "clauses": [
+        {
+          "source_topic": "检查不等于安装授权；安装、项目启用及新版本生效范围分离",
+          "disposition": "workbench_equivalent",
+          "decision": "工作台只接受受控数据包导入，共享安装不自动启用；AI候选应用与项目选择仍独立。包内容hash与id/version不可变，旧运行保留原hash。不是旧Codex文件安装器。",
+          "evidence": [
+            {
+              "path": "backend/tests/test_skills.py",
+              "test": "test_install_is_immutable_and_project_selection_is_versioned"
+            },
+            {
+              "path": "backend/tests/test_skill_dependencies.py",
+              "test": "test_legacy_packages_keep_their_original_canonical_hash"
+            },
+            {
+              "path": "docs/setup-assistant.md"
+            }
+          ]
+        },
+        {
+          "source_topic": "保留用户资料、批准与冻结运行，不通过更新回退剧情状态",
+          "disposition": "workbench_equivalent",
+          "decision": "SQLite内安装新包不修改项目正文、图片、审核或旧会话；恢复旧流程指明确选择仍保存的旧版本，不能等同程序目录的整机恢复。用户自定义包与启用选择不自动覆盖。",
+          "evidence": [
+            {
+              "path": "backend/skills.py"
+            },
+            {
+              "path": "docs/skills.md"
+            }
+          ]
+        },
+        {
+          "source_topic": "GitHub稳定Release/main预览检查下载、系统Python/Hook/agent配置和本机安装目录",
+          "disposition": "not_applicable",
+          "decision": "这些是旧外部宿主安装器的环境维护；工作台数据包不能执行更新器、改系统Python、写个人Skill目录或伪造Hook信任。没有迁入联网更新/发布或贡献上传能力。发布应用时携带审定数据包，不将旧脚本假装新业务工具。",
+          "evidence": []
+        },
+        {
+          "source_topic": "旧安装器备份恢复、锁与本地修改检查的脚本实现",
+          "disposition": "pending",
+          "decision": "本文仅确认工作台不可变安装/显式版本选择的对应边界；源update_skills/install等脚本仍在原脚本清单待必要性审查，未计为已登记或已执行。旧安装ZIP不是comic-skill/v1；兼容转换是否需要及如何保留用户增补仍需逐项处置，不能直接运行它。",
+          "evidence": [
+            {
+              "path": "resources/comic-skills/migration-inventory.json"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "source": "vertical-comic-preproduction/references/workspace-adapter.md",
+      "source_sha256": "b9070a18de896cab4a6257e6db152b8e7ff9074d7cb319f0f21335a4030c6dfc",
+      "status": "reviewed_partial_host_mapping",
+      "clauses": [
+        {
+          "source_topic": "不得硬编码旧B盘工作区；当前用户/本书批准依据优先",
+          "disposition": "workbench_equivalent",
+          "decision": "运行只使用当前项目及固定版本资料，不能读旧电脑路径或把个人跨书示例当本项目批准资产；个人样张不自动获得授权。来源规则由当前项目实际参考/审核控制。",
+          "evidence": [
+            {
+              "path": "backend/agent_tools.py"
+            },
+            {
+              "path": "backend/tests/test_production_reference_state.py",
+              "test": "test_revoked_approval_never_becomes_adopted_package"
+            },
+            {
+              "path": "docs/production-text.md"
+            }
+          ]
+        },
+        {
+          "source_topic": "旧A/B示例作品与历史电脑文件的证据优先级",
+          "disposition": "not_applicable",
+          "decision": "源文提供个人跨书实例的先后顺序，但这些实例未随工作台提供或在当前项目批准；不得复制作品名作默认通过样张，也不得声称已审阅其原图。保留“真实批准证据优先、旧材料只作历史”的判断边界。",
+          "evidence": []
+        },
+        {
+          "source_topic": "不自动排气泡、制作特效字或PSD；不自动进入C阶段",
+          "disposition": "workbench_equivalent",
+          "decision": "原完整计划把高级图片工作区另专题；现有单图/ZIP原件下载不构成排版、气泡或PSD生产。交付边界保留，模型不能靠规则包新增后期工具。",
+          "evidence": [
+            {
+              "path": "PRODUCT.md"
+            },
+            {
+              "path": "README.md"
+            }
+          ]
+        },
+        {
+          "source_topic": "CAMERA_CANDIDATE/HOLD、独立批准机位/空间记录与提示词关口",
+          "disposition": "pending",
+          "decision": "工作台现有脚本/生图包版本及人工审核可绑定镜头文本，但没有旧独立CAMERA状态机、单独机位锁和旧B包批准表。不得把字段相似或脚本审核当完整旧协议迁移；后续按必要性决定以独立镜头候选/审核映射还是补模型，原脚本仍只经明确候选采用修改。",
+          "evidence": [
+            {
+              "path": "backend/frame_plan.py"
+            },
+            {
+              "path": "docs/frame-plans.md"
+            }
+          ]
+        },
+        {
+          "source_topic": "逐格图片完整交付包及用户验收终点",
+          "disposition": "pending",
+          "decision": "现有原件下载/逐格采用不是已实现全部源格覆盖、真实QA与问题决定对应的完整交付封包器。不得沿用旧名称宣称全话成品交付完成。",
+          "evidence": [
+            {
+              "path": "docs/comic-skills-migration.md"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "source": "vertical-comic-preproduction/references/runtime-clock.md",
+      "source_sha256": "38bad3bd7a13593c1a883c521a11e8f8b35458022fd3fcbbfcc6d9d88b510c2c",
+      "status": "reviewed_partial_host_mapping",
+      "clauses": [
+        {
+          "source_topic": "默认4小时目标/7小时有效硬限；暂停等用户不计；在途收尾；恢复不清零",
+          "disposition": "workbench_equivalent",
+          "decision": "image_batches（含三套画风）已用持久有效时间/检查点；正常服务等待计时、暂停等用户不累计、到限不新派发但保留返回；异常离线保守上界另标，不说精确测量或假暂停。仅限该批次职责范围。",
+          "evidence": [
+            {
+              "path": "backend/tests/test_image_batch_control.py",
+              "test": "test_waiting_for_user_does_not_reset_or_advance_effective_time"
+            },
+            {
+              "path": "backend/tests/test_image_batch_control.py",
+              "test": "test_hard_limit_stops_new_dispatch_keeps_return_and_recovery_cannot_reset_budget"
+            },
+            {
+              "path": "docs/image-batch-control.md"
+            }
+          ]
+        },
+        {
+          "source_topic": "前期/接包、分话并行共享一个职责时钟；2.5小时收敛与环节降级",
+          "disposition": "pending",
+          "decision": "当前计时是每个授权图像批次，不是全项目跨文本/编译/前期/封包的统一职责时钟。2.5小时收敛、环节预算与自动降级没有因有4h/7h常量而完成，不能按话或批次给旧源职责重新发预算。",
+          "evidence": [
+            {
+              "path": "backend/image_batch_control.py"
+            },
+            {
+              "path": "docs/runtime-capacity.md"
+            }
+          ]
+        },
+        {
+          "source_topic": "旧wall/three-hour协议、amend-policy、跨boot attach/owner接管",
+          "disposition": "pending",
+          "decision": "未接旧目录/Hook协议导入、职责时钟策略修订或跨旧owner接管；现有异常重启上界不是旧TIME_UNCERTAIN的等价恢复。不得热改旧运行、补造暂停事件或把应用重启当恢复所有旧协议。",
+          "evidence": [
+            {
+              "path": "docs/pi-run-checkpoints.md"
+            }
+          ]
+        },
+        {
+          "source_topic": "自然时钟限时封包、完整源格索引与FULL_RESULT_READY",
+          "disposition": "pending",
+          "decision": "工作台没有旧deadline_delivery/handoff_zip/coordination finish-check的完整机械封包与完整性验收；暂停/硬限停止只能算停止新工作，不能冒充全话成品按时交付。",
+          "evidence": [
+            {
+              "path": "README.md"
+            }
+          ]
+        },
+        {
+          "source_topic": "运行指标区分自然/有效/排除区间与真实费用",
+          "disposition": "workbench_equivalent",
+          "decision": "批次显示有效运行及未观测上界；用量/金额未知不补零、不声称CPU时间或真实服务费。没有所有旧指标或全局预算看板。",
+          "evidence": [
+            {
+              "path": "docs/image-batch-control.md"
+            },
+            {
+              "path": "docs/pi-run-checkpoints.md"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

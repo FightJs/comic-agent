@@ -1,3 +1,14 @@
+import {AgentPanel} from "./AgentPanel";
+import {VisionReviewButton} from "./VisionReview";
+import {ImageGeneration} from "./ImageGeneration";
+import { GraphWorkspace } from "./GraphWorkspace";
+import { GraphDocuments } from "./GraphDocuments";
+import { GraphAssetBinding } from "./GraphAssetBinding";
+import { DocumentGeneration } from "./DocumentGeneration";
+import { primaryRecord } from "./workflowLogic";
+import { GroupResults } from "./Workflow";
+import { RangeGeneration } from "./Workflow";
+import { Select } from "./Select";
 import { useViewState } from "./useViewState";
 import { useEffect, useMemo, useState } from "react";
 import {
@@ -33,338 +44,19 @@ export type WorkspaceProps = {
   ) => Promise<void>;
 };
 
-export function Original({ pid, records, refresh }: WorkspaceProps) {
-  const originals = records.filter((r) => r.kind === "original"),
-    [id, setId] = useViewState(pid + ":original-id", ""),
-    [query, setQuery] = useViewState(pid + ":original-query", ""),
-    [chapter, setChapter] = useViewState(pid + ":original-chapter", 0),
-    [encoding, setEncoding] = useState("auto"),
-    [error, setError] = useState(""),
-    [busy, setBusy] = useState(false),
-    [hit, setHit] = useState(0);
-  const current = originals.find((r) => r.id === id) || originals.at(-1);
-  const text: string = current?.content.text || "";
-  const matches = useMemo(() => {
-    if (!query) return [];
-    const a: number[] = [];
-    let i = text.indexOf(query);
-    while (i >= 0 && a.length < 1000) {
-      a.push(i);
-      i = text.indexOf(query, i + query.length);
-    }
-    return a;
-  }, [text, query]);
-  const storedChapters = current?.content.chapters || [];
-  const chapters =
-    storedChapters.length && storedChapters[0].offset > 0
-      ? [{ title: "前言", offset: 0 }, ...storedChapters]
-      : storedChapters;
-  const start = chapters[chapter]?.offset || 0,
-    end = chapters[chapter + 1]?.offset || text.length;
-  const visible = text.slice(start, end);
-  const upload = async (file?: File) => {
-    if (!file) return;
-    setBusy(true);
-    setError("");
-    const form = new FormData();
-    form.append("file", file);
-    form.append("encoding", encoding);
-    try {
-      const r = await api<RecordItem>(base(pid) + "/text", {
-        method: "POST",
-        body: form,
-      });
-      await refresh();
-      setId(r.id);
-      setChapter(0);
-    } catch (e) {
-      setError((e as Error).message);
-    } finally {
-      setBusy(false);
-    }
-  };
-  const navigateHit = (n: number) => {
-    const next = (n + matches.length) % matches.length;
-    setHit(next);
-    const offset = matches[next];
-    let ch = chapters.findIndex(
-      (c: any, i: number) =>
-        offset >= c.offset && offset < (chapters[i + 1]?.offset || text.length),
-    );
-    setChapter(Math.max(ch, 0));
-    setTimeout(
-      () =>
-        document
-          .querySelector(".reader mark.active-hit")
-          ?.scrollIntoView({ block: "center" }),
-      50,
-    );
-  };
-  const highlighted = () => {
-    if (!query) return visible;
-    const parts = visible.split(query);
-    let offset = start;
-    return parts.flatMap((p, i) => {
-      if (!i) {
-        offset += p.length;
-        return [p];
-      }
-      const active = offset === matches[hit];
-      offset += query.length + p.length;
-      return [
-        <mark className={active ? "active-hit" : ""} key={"m" + i}>
-          {query}
-        </mark>,
-        p,
-      ];
-    });
-  };
-  return (
-    <>
-      <div className="section-tools">
-        <div className="actions">
-          <select
-            aria-label="导入编码"
-            value={encoding}
-            onChange={(e) => setEncoding(e.target.value)}
-          >
-            <option value="auto">自动识别编码</option>
-            <option value="utf-8-sig">UTF-8</option>
-            <option value="gb18030">GB18030</option>
-          </select>
-          <label className={`button primary ${busy ? "disabled" : ""}`}>
-            <Upload size={16} />
-            {busy ? "正在导入…" : "导入 TXT"}
-            <input
-              aria-label="导入小说"
-              type="file"
-              accept=".txt"
-              disabled={busy}
-              onChange={(e) => {
-                void upload(e.target.files?.[0]);
-                e.target.value = "";
-              }}
-              className="file-input"
-            />
-          </label>
-        </div>
-        <span className="muted">仅本机保存 · 原件只读 · 最大 20MB</span>
-      </div>
-      <ErrorNote message={error} />
-      {!current ? (
-        <Empty
-          title="从一本小说开始"
-          action={
-            <span className="muted">
-              导入后可搜索全文、按章节定位，并保留原始文件。
-            </span>
-          }
-        >
-          选择 TXT 原著，为后续改编建立可追溯的依据。
-        </Empty>
-      ) : (
-        <div className="reader-shell">
-          <aside className="chapter-list">
-            <label>
-              原著版本
-              <select
-                value={current.id}
-                onChange={(e) => {
-                  setId(e.target.value);
-                  setChapter(0);
-                }}
-              >
-                {originals.map((r) => (
-                  <option key={r.id} value={r.id}>
-                    {r.title}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <div className="file-info">
-              <FileText size={15} />
-              {text.length.toLocaleString()} 字 · {current.content.encoding}
-            </div>
-            {(chapters.length ? chapters : [{ title: "全文" }]).map(
-              (c: any, i: number) => (
-                <button
-                  key={i}
-                  className={i === chapter ? "selected" : ""}
-                  onClick={() => setChapter(i)}
-                >
-                  {c.title}
-                </button>
-              ),
-            )}
-          </aside>
-          <div className="reader-main">
-            <div className="search">
-              <Search size={17} />
-              <input
-                aria-label="搜索原著"
-                placeholder="搜索原著中的人物、事件或句子"
-                value={query}
-                onChange={(e) => {
-                  setQuery(e.target.value);
-                  setHit(0);
-                }}
-              />
-              <span>{query ? `${matches.length} 处` : ""}</span>
-              {matches.length > 0 && (
-                <button onClick={() => navigateHit(hit + 1)}>下一处</button>
-              )}
-            </div>
-            <div className="reader">
-              <div className="reader-meta">
-                <Badge source="import" />
-                <span>只读原著</span>
-              </div>
-              <h2>{chapters[chapter]?.title || current.title}</h2>
-              <div className="novel-text">{highlighted()}</div>
-            </div>
-          </div>
-        </div>
-      )}
-    </>
-  );
+export function Original({ pid, refresh }: WorkspaceProps) {
+  return <GraphDocuments pid={pid} onChanged={() => void refresh()} />;
 }
-
-export function Memory({ records, run }: WorkspaceProps) {
-  const r = records.filter((x) => x.kind === "memory").at(-1),
-    [filter, setFilter] = useState("全部"),
-    [selected, setSelected] = useState<any>(null);
-  const nodes: Node[] = (r?.content.nodes || [])
-    .filter((n: any) => filter === "全部" || n.type === filter)
-    .map((n: any, i: number) => ({
-      id: n.id,
-      position: { x: (i % 2) * 280 + 80, y: Math.floor(i / 2) * 190 + 80 },
-      data: {
-        label: (
-          <div>
-            <small>{n.type}</small>
-            <strong>{n.label}</strong>
-          </div>
-        ),
-      },
-      className: "entity-node",
-    }));
-  const edges: Edge[] = (r?.content.edges || [])
-    .filter(
-      (e: any) =>
-        nodes.some((n) => n.id === e.source) &&
-        nodes.some((n) => n.id === e.target),
-    )
-    .map((e: any, i: number) => ({
-      ...e,
-      id: String(i),
-      style: { stroke: "#8a956e" },
-      labelStyle: { fill: "#3c4430", fontSize: 12 },
-    }));
-  return (
-    <>
-      <div className="section-tools">
-        <div className="actions">
-          <select
-            aria-label="实体类型"
-            value={filter}
-            onChange={(e) => setFilter(e.target.value)}
-          >
-            {["全部", "人物", "场景", "道具"].map((x) => (
-              <option key={x}>{x}</option>
-            ))}
-          </select>
-          <span className="muted">点击实体查看属性与来源</span>
-        </div>
-        <button className="primary" onClick={() => void run("memory", r)}>
-          <Sparkles size={16} />
-          模拟理解与提取
-        </button>
-      </div>
-      <div className="notice">
-        AI 理解与 GraphRAG 尚未接入。示例关系不代表对当前小说的提取结果。
-      </div>
-      <details
-        className="gate-details"
-        style={{ marginTop: 0, marginBottom: 18 }}
-      >
-        <summary>
-          章节覆盖与事件记录<span>正式理解尚未执行</span>
-        </summary>
-        <div>
-          {records
-            .filter((x) => x.kind === "original")
-            .map((original) => (
-              <div key={original.id}>
-                <strong>{original.title}</strong>
-                <p>
-                  {(original.content.chapters?.length
-                    ? original.content.chapters
-                    : [{ title: "全文" }]
-                  )
-                    .map((chapter: any) => chapter.title + " · 待理解")
-                    .join("；")}
-                </p>
-              </div>
-            ))}
-          {!records.some((x) => x.kind === "original") && (
-            <p>请先导入原著以建立章节覆盖范围。</p>
-          )}
-          {r && (
-            <>
-              <h4>模拟事件 · 非原著提取</h4>
-              <p>
-                阿青到访旧院 → 发现来信 →
-                寻找写信人。依据：预置流程样例，无当前小说原文定位。
-              </p>
-            </>
-          )}
-        </div>
-      </details>
-      {!r ? (
-        <Empty title="原著中的关系，尚待整理">
-          模拟提取可体验人物、场景与关系的交互；正式事实仍需后续模型接入。
-        </Empty>
-      ) : (
-        <div className="graph">
-          <ReactFlow
-            nodes={nodes}
-            edges={edges}
-            fitView
-            onNodeClick={(_, n) =>
-              setSelected(r.content.nodes.find((x: any) => x.id === n.id))
-            }
-          >
-            <Background color="#dce0d4" gap={24} />
-            <Controls />
-          </ReactFlow>
-        </div>
-      )}
-      {selected && (
-        <Drawer title={selected.label} onClose={() => setSelected(null)}>
-          <Badge source={r?.source || "mock"} />
-          <h3>{selected.type}属性</h3>
-          <p>{selected.description}</p>
-          <h3>来源依据</h3>
-          <p>{selected.source}</p>
-          <h3>关联关系</h3>
-          {r?.content.edges
-            .filter(
-              (e: any) => e.source === selected.id || e.target === selected.id,
-            )
-            .map((e: any, i: number) => (
-              <p key={i}>{e.label}</p>
-            ))}
-        </Drawer>
-      )}
-    </>
-  );
+export function Memory(props: WorkspaceProps) {
+  return <GraphWorkspace {...props} />;
 }
 
 export function Documents({
   kind,
   ...props
 }: WorkspaceProps & { kind: "skeleton" | "outline" }) {
-  const rows = props.records.filter((r) => r.kind === kind),
+  const [generating, setGenerating] = useState(false),[docGenerating,setDocGenerating]=useState(false),[docResults,setDocResults]=useState(false);
+  const rows = props.records.filter((r) => r.kind === kind && primaryRecord(r)),
     [id, setId] = useViewState(props.pid + ":" + kind + ":document-id", ""),
     [error, setError] = useState("");
   const record = rows.find((r) => r.id === id) || rows.at(-1);
@@ -389,10 +81,13 @@ export function Documents({
   };
   return (
     <>
-      <div className="section-tools">
+      {docGenerating && <DocumentGeneration pid={props.pid} kind={kind} target={record} records={props.records} refresh={props.refresh} onClose={()=>setDocGenerating(false)}/>}
+      {docResults && <GroupResults pid={props.pid} kindFilter={kind} refresh={props.refresh} onClose={()=>setDocResults(false)}/>}
+      {generating && <RangeGeneration initialOutlineId={record?.id} pid={props.pid} records={props.records} refresh={props.refresh} onClose={() => setGenerating(false)} />}
+      <div className="section-tools document-tools">
         <div className="actions">
           {rows.length > 0 && (
-            <select
+            <Select
               aria-label="选择文档"
               value={record?.id}
               onChange={(e) => setId(e.target.value)}
@@ -403,7 +98,7 @@ export function Documents({
                   {r.content.pending_for ? " · 待处理回复" : ""}
                 </option>
               ))}
-            </select>
+            </Select>
           )}
           {record && (
             <>
@@ -413,16 +108,18 @@ export function Documents({
           )}
         </div>
         <div className="actions">
+          <button onClick={()=>setDocResults(true)}>查看文档候选</button>
+          {kind === "outline" && <button onClick={() => setGenerating(true)}>按话范围生成脚本</button>}
           <button onClick={() => void create()}>
             <Plus size={16} />
             新建草稿
           </button>
           <button
             className="primary"
-            onClick={() => void props.run(kind, record)}
+            onClick={() => setDocGenerating(true)}
           >
             <Sparkles size={16} />
-            模拟生成
+            生成候选
           </button>
         </div>
       </div>
@@ -447,7 +144,7 @@ export function Documents({
             </button>
           }
         >
-          可以直接自由编辑，或生成明确标识的模拟样例体验流程。
+          可以直接自由编辑，或调用文本模型生成候选，核对后采用。
         </Empty>
       )}
     </>
@@ -458,15 +155,22 @@ function AssetDetails({
   record,
   onSaved,
   onClose,
+  onConfirmed,
+  canBindStyle,
+  onRegenerate,
 }: {
   record: RecordItem;
   onSaved: (r: RecordItem) => void;
   onClose: () => void;
+  onConfirmed: () => void;
+  canBindStyle: boolean;
+  onRegenerate:(record:RecordItem)=>void;
 }) {
   const draft = useDraft(record, onSaved),
     [review, setReview] = useState(false),
     [message, setMessage] = useState(""),
-    [assetError, setAssetError] = useState("");
+    [assetError, setAssetError] = useState(""),
+    [recovering,setRecovering] = useState(false);
   const uploadVersion = async (file?: File) => {
     if (!file) return;
     const head = draft.head.current;
@@ -497,18 +201,20 @@ function AssetDetails({
           version: draft.head.current.version,
         }),
       );
-      setMessage("已采用此画风版本。修改后需重新审核并选用。");
       onSaved(draft.head.current);
+      onConfirmed();
     } catch (e) {
       setAssetError((e as Error).message);
     }
   };
   return (
-    <Drawer title={record.title} onClose={onClose}>
+    <Drawer title={record.kind === "style" && record.content.style_option ? `方案 ${record.content.style_option} · ${record.title}` : record.title} onClose={onClose}>
       <Badge source={record.source} />
       <ErrorNote message={assetError} />
       {message && <p className="notice">{message}</p>}
       <div className="actions">
+        <button disabled={draft.dirty} onClick={()=>onRegenerate(draft.head.current)}>用模型重新生成候选</button>
+        <VisionReviewButton target={draft.head.current} disabled={draft.dirty}/>
         <label className="button">
           导入新版本
           <input
@@ -522,11 +228,21 @@ function AssetDetails({
             }}
           />
         </label>
+        {record.kind === "asset" && canBindStyle && <button disabled={draft.dirty} onClick={async () => {
+          try {
+            const next = await api<RecordItem>(base(record.project_id) + `/records/${record.id}/confirm-style`, json("POST", { version: draft.head.current.version }));
+            draft.accept(next); draft.setContent(next.content); onSaved(next);
+            setMessage("已关联当前画风并建立新版本，请重新审核资产。");
+          } catch (e) { setAssetError((e as Error).message); }
+        }}>确认符合当前画风</button>}
         {record.kind === "style" && (
-          <button onClick={() => void choose()}>采用此画风</button>
+          <button className="primary" disabled={draft.dirty} onClick={() => void choose()}>确认此画风</button>
+
         )}
       </div>
-      {record.content.url && (
+      {record.kind === "style" && draft.dirty && <p className="notice">请先保存属性，再确认此画风。</p>}
+      {record.content.samples && <div className="style-samples">{record.content.samples.map((sample: any) => <figure key={sample.label}><img src={sample.url} alt={sample.label} /><figcaption>{sample.label}</figcaption></figure>)}</div>}
+      {record.content.url && !record.content.samples && (
         <img
           className="asset-detail-image"
           src={record.content.url}
@@ -554,13 +270,15 @@ function AssetDetails({
         ))}
       </div>
       <ErrorNote message={draft.error} />
+      {draft.error&&<div className="asset-draft-recovery"><p>当前编辑仍保留。可先比较“版本与审核”，再读取最新版本号继续保存；或明确放弃本地草稿。</p><div className="actions"><button disabled={recovering} onClick={async()=>{setRecovering(true);try{await draft.resolve();}finally{setRecovering(false);}}}>保留编辑并读取最新版本号</button><button disabled={recovering} onClick={async()=>{setRecovering(true);try{await draft.discard();}finally{setRecovering(false);}}}>放弃草稿并读取最新内容</button></div></div>}
       <div className="actions">
-        <button className="primary" onClick={() => draft.retry()}>
+        <button className="primary" disabled={recovering} onClick={() => draft.retry()}>
           保存属性
         </button>
         <button onClick={() => setReview(true)}>版本与审核</button>
         <span className="muted">{draft.status}</span>
       </div>
+      {record.kind === "asset" && <GraphAssetBinding record={draft.head.current} dirty={draft.dirty} onSaved={onSaved} />}
       {review && (
         <RecordHistory
           record={draft.head.current}
@@ -574,20 +292,34 @@ function AssetDetails({
 
 export function Assets({
   kind,
+  onConfirmed,
   ...props
-}: WorkspaceProps & { kind: "style" | "asset" }) {
+}: WorkspaceProps & { kind: "style" | "asset"; onConfirmed: () => void }) {
   const [filter, setFilter] = useState("全部"),
     [source, setSource] = useState("all"),
     [status, setStatus] = useState("all"),
     [selected, setSelected] = useState<RecordItem | null>(null),
     [error, setError] = useState(""),
     [busy, setBusy] = useState(false);
+  const [generating,setGenerating]=useState<{target?:RecordItem}|null>(null),[styleAssistant,setStyleAssistant]=useState(false);
+  const [styleState, setStyleState] = useState<any>(null);
+  useEffect(() => {
+    let alive = true;
+    api(base(props.pid) + "/style-selection").then(value => { if (alive) setStyleState(value); }).catch(e => { if (alive) { setStyleState(null); setError(e.message); } });
+    return () => { alive = false; };
+  }, [props.pid, props.records]);
+  const styleReady = styleState?.status === "confirmed";
+  const chosenStyle = props.records.find(r => r.id === styleState?.selection?.record_id);
+  const chosenTitle = chosenStyle?.content.style_option ? `方案 ${chosenStyle.content.style_option} · ${styleState?.title}` : styleState?.title;
+  const isChosenStyle = (r: RecordItem) => styleReady && r.id === styleState.selection.record_id && r.version === styleState.selection.version;
+  const currentStyle = (r: RecordItem) => styleReady && r.content.style_reference?.record_id === styleState.selection.record_id && r.content.style_reference?.version === styleState.selection.version;
+  const filtering = filter !== "全部" || source !== "all" || status !== "all";
   const rows = props.records.filter(
     (r) =>
-      r.kind === kind &&
+      r.kind === kind && primaryRecord(r) &&
       (filter === "全部" || r.content.category === filter) &&
       (source === "all" || r.source === source) &&
-      (status === "all" || r.review === status),
+      (status === "all" || (kind === "asset" && !currentStyle(r) ? status === "pending" : r.review === status)),
   );
   const upload = async (file?: File) => {
     if (!file) return;
@@ -607,9 +339,16 @@ export function Assets({
   };
   return (
     <>
+      {styleAssistant&&<Drawer title="同组三套画风方案" wide onClose={()=>setStyleAssistant(false)}><p className="notice">请AI先阅读原著与已采用审核的细纲，为同一主角、同一主场景提出三套二维画风测试。方案中逐套预览并明确生成，候选仍需核对采用。</p><AgentPanel pid={props.pid} stage="style" records={props.records} onChanged={props.refresh}/></Drawer>}
+      {generating&&<ImageGeneration key={kind+":"+(generating.target?.id||"new")+":"+(generating.target?.version||0)} pid={props.pid} kind={kind} target={generating.target} records={props.records} refresh={props.refresh} onClose={()=>setGenerating(null)}/>}
+      <div className="style-progress" role="status">
+        <div><strong>{styleReady ? `已确认：${chosenTitle} · v${styleState.selection.version}` : styleState?.status === "stale" ? "画风版本已变化 · 请重新确认" : "先比较三版画风，再确认一版"}</strong>
+        <p>{styleReady ? `${styleState.selection.source === "mock" ? "模拟画风，仅用于体验流程。" : ""}全面资产将绑定此画风版本；确认不会自动生成。` : "尚未确认当前画风，全面资产生成暂不可用。已有资产保留供查看。"}</p></div>
+        {styleReady && kind === "style" && <button onClick={onConfirmed}>进入全面资产</button>}
+      </div>
       <div className="section-tools">
         <div className="actions">
-          <select
+          <Select
             aria-label="资产分类"
             value={filter}
             onChange={(e) => setFilter(e.target.value)}
@@ -617,8 +356,8 @@ export function Assets({
             {["全部", "人物", "场景", "道具"].map((x) => (
               <option key={x}>{x}</option>
             ))}
-          </select>
-          <select
+          </Select>
+          <Select
             aria-label="资产来源"
             value={source}
             onChange={(e) => setSource(e.target.value)}
@@ -626,8 +365,9 @@ export function Assets({
             <option value="all">全部来源</option>
             <option value="import">人工导入</option>
             <option value="mock">模拟</option>
-          </select>
-          <select
+            <option value="ai">AI生成/修改</option>
+          </Select>
+          <Select
             aria-label="审核状态"
             value={status}
             onChange={(e) => setStatus(e.target.value)}
@@ -636,9 +376,11 @@ export function Assets({
             <option value="pending">待审核</option>
             <option value="approved">已通过</option>
             <option value="changes">需修改</option>
-          </select>
+          </Select>
         </div>
         <div className="actions">
+          {kind==="style"&&<button className="primary" onClick={()=>setStyleAssistant(true)}>AI三套画风方案</button>}
+          <button className="primary" disabled={busy||(kind==="asset"&&!styleReady)} onClick={()=>setGenerating({})}>模型生图（单图候选）</button>
           <label className="button">
             <Upload size={16} />
             {busy ? "导入中…" : "导入图片"}
@@ -656,11 +398,14 @@ export function Assets({
           </label>
           <button
             className="primary"
+            disabled={busy || (kind === "asset" && !styleReady)}
             onClick={async () => {
-              if (kind === "style") {
-                for (let i = 0; i < 3; i++)
-                  await props.run("style", undefined, { panel: i + 1 });
-              } else await props.run("asset");
+              setBusy(true);
+              try {
+                if (kind === "style") {
+                  for (let i = 0; i < 3; i++) await props.run("style", undefined, { panel: i + 1 });
+                } else await props.run("asset");
+              } finally { setBusy(false); }
             }}
           >
             <Sparkles size={16} />
@@ -671,19 +416,19 @@ export function Assets({
       <ErrorNote message={error} />
       <div className="notice">
         {kind === "style"
-          ? "先比较画风与代表样例，再补齐全书资产。三套模拟图仅为界面占位，不代表真实画风生成。"
+          ? "模拟三版使用同组预置人物与场景，并非当前小说效果。模型生图另按本次提示词和参考生成单图候选，采用后可展开并确认；AI三套方案基于当前原著与已审核细纲，可逐套预览或整组核对型号与三张提示词；明确授权后连续生成，候选仍须逐项采用审核。"
           : "人物、场景、道具按剧情状态整理。全书资产审核完成后，才满足正式制作的前期条件。"}
       </div>
       {rows.length ? (
-        <div className="asset-grid">
+        <div className={`asset-grid ${kind === "style" ? "style-comparison" : ""}`}>
           {rows.map((r) => (
             <button
-              className="asset-tile"
+              className={`asset-tile ${kind === "style" && isChosenStyle(r) ? "confirmed-style" : ""}`}
               key={r.id}
               onClick={() => setSelected(r)}
             >
               <div className="asset-image">
-                {r.content.url ? (
+                {kind === "style" && r.content.samples ? <div className="style-samples">{r.content.samples.map((sample: any) => <figure key={sample.label}><img src={sample.url} alt={sample.label} loading="lazy" /><figcaption>{sample.label}</figcaption></figure>)}</div> : r.content.url ? (
                   <img src={r.content.url} alt={r.title} loading="lazy" />
                 ) : (
                   <FileText />
@@ -693,12 +438,15 @@ export function Assets({
                 </span>
               </div>
               <div className="asset-caption">
-                <strong>{r.title}</strong>
+                {kind === "style" && isChosenStyle(r) && <span className="confirmed-style-label"><CheckCircle2 size={14} />当前已确认 · v{r.version}</span>}
+                <strong>{kind === "style" && r.content.style_option ? `方案 ${r.content.style_option} · ${r.title}` : r.title}</strong>
                 <span>
                   {r.content.category} · {r.content.state || "默认状态"}
                 </span>
+                {kind === "style" && <span>{r.content.samples ? "同组人物与场景 · 点击展开比较" : r.content.style_test_id ? "同组三套测试板 · 点击查看" : "画风参考 · 点击查看"}</span>}
+                {kind === "asset" && <span className="style-reference">{currentStyle(r) ? `当前画风 · v${r.content.style_reference.version}` : r.content.style_reference ? `旧画风 · v${r.content.style_reference.version} · 待重新确认` : "未绑定画风 · 待重新确认"}</span>}
                 <div>
-                  <span className="status-text">{reviewLabel(r.review)}</span>
+                  <span className="status-text">{kind === "asset" && !currentStyle(r) ? "待重新确认" : reviewLabel(r.review)}</span>
                   <small>v{r.version}</small>
                   <ArrowUpRight size={15} />
                 </div>
@@ -709,18 +457,30 @@ export function Assets({
       ) : (
         <Empty
           title={
-            kind === "style"
-              ? "为这部作品确定视觉语言"
-              : "让每个角色与场景都有依据"
+            filtering
+              ? "没有符合筛选条件的资产"
+              : kind === "style"
+                ? "为这部作品确定视觉语言"
+                : "让每个角色与场景都有依据"
           }
+          action={filtering && <button onClick={() => {
+            setFilter("全部");
+            setSource("all");
+            setStatus("all");
+          }}>清除筛选</button>}
         >
-          导入 PNG/JPEG 参考图，记录状态与来源，并审核准确版本。
+          {filtering
+            ? "试试其他分类、来源或审核状态，也可以清除筛选查看全部资产。"
+            : "导入 PNG/JPEG 参考图，记录状态与来源，并审核准确版本。"}
         </Empty>
       )}
       {selected && (
         <AssetDetails
           key={selected.id}
           record={selected}
+          onRegenerate={record=>{setSelected(null);setGenerating({target:record});}}
+          canBindStyle={styleReady && !currentStyle(selected)}
+          onConfirmed={onConfirmed}
           onSaved={(r) => {
             props.onSaved(r);
             setSelected(r);
@@ -748,7 +508,7 @@ export function GateSummary({ pid }: { pid: string }) {
           {value?.reasons?.join("、") || "正在检查前期条件"}
           {value?.reasons?.length ? "尚未完成。" : ""}
         </p>
-        <small>可浏览与模拟；真实 AI 生成尚未接入。</small>
+        <small>文本、单格图像、独立格批次与单图视觉复查可连接模型；前图依赖需采用审核后恢复；可选实图检查与一轮严重剧情返修；其他返修待接入。</small>
       </div>
     </div>
   );

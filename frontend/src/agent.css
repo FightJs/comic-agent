@@ -1,0 +1,33 @@
+.agent-panel { display:flex; flex-direction:column; gap:16px; min-height:100%; }
+.agent-scope { color:var(--muted); margin:0; line-height:1.7; }
+.agent-session-bar label { display:flex; align-items:center; gap:12px; }
+.agent-session-bar .theme-select { flex:1; min-width:0; }
+.agent-refs { border-block:1px solid var(--line); padding:12px 0; }
+.agent-ref-list { display:flex; flex-direction:column; gap:10px; max-height:200px; overflow:auto; padding:12px 0; }
+.agent-ref-list label { display:flex; flex-direction:row; align-items:flex-start; gap:8px; text-align:left; }
+.agent-ref-list label span { min-width:0; overflow-wrap:anywhere; }
+.agent-ref-list input { flex:none; margin-top:3px; }
+.agent-ref-picker > label { display:flex; flex-direction:column; align-items:stretch; text-align:left; gap:6px; margin-top:12px; }
+.agent-ref-pages { display:flex; flex-wrap:wrap; align-items:center; gap:8px; }
+.agent-ref-pages small { color:var(--muted); flex:1; min-width:180px; }
+.agent-transcript { flex:1; min-width:0; }
+.agent-empty { padding:24px 0; }
+.agent-empty h3 { font-size:16px; margin:0 0 8px; }
+.agent-empty p { color:var(--muted); line-height:1.8; }
+.agent-exchange { border-bottom:1px solid var(--line); padding:12px 0 20px; }
+.agent-exchange p { white-space:pre-wrap; overflow-wrap:anywhere; line-height:1.85; margin:6px 0 16px; }
+.agent-user { background:var(--sidebar); padding:12px; margin-bottom:16px; border-radius:6px; }
+.agent-user p { margin-bottom:0; }
+.agent-answer small { color:var(--muted); }
+.agent-composer { display:flex; flex-direction:column; gap:8px; padding-top:16px; border-top:1px solid var(--line); }
+.agent-composer textarea { width:100%; resize:vertical; min-height:96px; }
+.agent-compose-actions { display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap; }
+.agent-compose-actions small { color:var(--muted); flex:1; min-width:180px; }
+.agent-panel > .notice { display:block; }
+.agent-panel > .notice button { display:block; max-width:100%; white-space:normal; margin-block:8px; }
+.agent-checkpoint {margin-top:16px;padding-top:16px;border-top:1px solid var(--line);}
+.agent-checkpoint h4 {font-size:14px;margin:0 0 8px;}
+.agent-checkpoint p {line-height:1.7;}
+.agent-checkpoint .agent-continue-confirm {display:flex;flex-direction:row;align-items:flex-start;gap:8px;line-height:1.7;font-size:13px;}
+.agent-continue-confirm input[type=checkbox] {width:auto;flex:none;margin-top:4px;}
+.agent-checkpoint .actions {flex-wrap:wrap;}

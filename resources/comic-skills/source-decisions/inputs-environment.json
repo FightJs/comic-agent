@@ -1,0 +1,2612 @@
+{
+  "format": "comic-source-decisions/v1",
+  "groups": [
+    {
+      "id": "environment_entrypoints",
+      "sources": [
+        "vertical-comic-preproduction/assets/templates/默认使用配置.json",
+        "vertical-comic-preproduction/references/installation-update.md",
+        "vertical-comic-preproduction/references/quick-start.md",
+        "vertical-comic-preproduction/references/review-progress.md",
+        "vertical-comic-preproduction/references/usage-configuration.md",
+        "vertical-comic-preproduction/references/usage.md",
+        "vertical-comic-preproduction/references/workspace-adapter.md",
+        "vertical-comic-preproduction/references/条漫Skill使用提示词.md",
+        "vertical-comic-preproduction/scripts/agent_capacity.py",
+        "vertical-comic-preproduction/scripts/comic_start.py",
+        "vertical-comic-preproduction/scripts/installation_state.py",
+        "vertical-comic-preproduction/scripts/runtime_capabilities.json",
+        "vertical-comic-preproduction/scripts/runtime_clock_context.py",
+        "vertical-comic-preproduction/scripts/runtime_clock_hook.py",
+        "vertical-comic-preproduction/scripts/runtime_clock_setup.py",
+        "vertical-comic-preproduction/scripts/runtime_environment.py",
+        "vertical-comic-preproduction/scripts/runtime_snapshot.py",
+        "vertical-comic-preproduction/scripts/update_skills.py",
+        "vertical-comic-preproduction/scripts/usage_config.py"
+      ],
+      "review_scope": "逐源静态条款/输出审计；保留残余，不执行旧程序、不修改inventory或包。"
+    },
+    {
+      "id": "fixed_inputs",
+      "sources": [
+        "vertical-comic-preproduction/references/codex-imagegen.md",
+        "vertical-comic-preproduction/references/draft-authoring.md",
+        "vertical-comic-preproduction/references/generation-io.md",
+        "vertical-comic-preproduction/references/production-foundation.md",
+        "vertical-comic-preproduction/references/schemas.md",
+        "vertical-comic-preproduction/references/stage-input-audit.md",
+        "vertical-comic-preproduction/references/stage-prompt-package.md",
+        "vertical-comic-preproduction/references/task-origin.md",
+        "vertical-comic-preproduction/scripts/authority_updates.py",
+        "vertical-comic-preproduction/scripts/codex_reference_contract.py",
+        "vertical-comic-preproduction/scripts/context_rebind.py",
+        "vertical-comic-preproduction/scripts/dispatch_publication.py",
+        "vertical-comic-preproduction/scripts/execution_contract.py",
+        "vertical-comic-preproduction/scripts/image_return_io.py",
+        "vertical-comic-preproduction/scripts/immutable_inputs.py",
+        "vertical-comic-preproduction/scripts/init_preproduction.py",
+        "vertical-comic-preproduction/scripts/input_dependencies.py",
+        "vertical-comic-preproduction/scripts/input_priority.py",
+        "vertical-comic-preproduction/scripts/input_quality.py",
+        "vertical-comic-preproduction/scripts/input_semantics.py",
+        "vertical-comic-preproduction/scripts/panel_derivation.py",
+        "vertical-comic-preproduction/scripts/panel_source.py",
+        "vertical-comic-preproduction/scripts/prepared_job_store.py",
+        "vertical-comic-preproduction/scripts/prepared_scope.py",
+        "vertical-comic-preproduction/scripts/production_evidence.py",
+        "vertical-comic-preproduction/scripts/script_catalog.py",
+        "vertical-comic-preproduction/scripts/source_adapter.py",
+        "vertical-comic-preproduction/scripts/source_input_contract.py",
+        "vertical-comic-preproduction/scripts/source_workbook.py",
+        "vertical-comic-preproduction/scripts/submission_contract.py",
+        "vertical-comic-preproduction/scripts/task_context.py"
+      ],
+      "review_scope": "逐源静态条款/输出审计；保留残余，不执行旧程序、不修改inventory或包。"
+    }
+  ],
+  "files": [
+    {
+      "source": "vertical-comic-preproduction/assets/templates/默认使用配置.json",
+      "source_sha256": "abafef641fc368498ff4ac2cbf78e79e61bfcb981269fb95c050a2c655e572c9",
+      "disposition": "mixed",
+      "summary": "逐字段默认策略不是工作台可直接导入的配置；保留诚实来源与有限返修方向，工作台容量/批次由现有宿主管理。",
+      "clauses": [
+        {
+          "source_anchor": "\"max_auto_correction_rounds\": 1",
+          "behavior": "模板设置最多一轮自动修正、返回即审和按源编号执行。",
+          "decision": "host_replaced",
+          "workbench_evidence": [
+            {
+              "path": "backend/image_postprocess.py"
+            },
+            {
+              "path": "backend/image_jobs.py"
+            },
+            {
+              "path": "resources/comic-skills/references/quality-gates.md"
+            }
+          ],
+          "remaining": "宿主仅固定批次可选检查/严重剧情一轮返修，非模板所有策略与逐图即时审核的完整等价。"
+        },
+        {
+          "source_anchor": "\"episode_workers\": 5",
+          "behavior": "默认五个话worker、整话inflight/auto容量及watchdog、四张审查组、规则缓存。",
+          "decision": "legacy_mechanism_not_ported",
+          "workbench_evidence": [
+            {
+              "path": "backend/capacity.py"
+            },
+            {
+              "path": "resources/comic-skills/workbench.md"
+            }
+          ],
+          "remaining": "不移植Codex子agent槽位、五worker和四张组默认；当前容量是模型池，不证明远端并发额度。"
+        },
+        {
+          "source_anchor": "\"active_seconds\": 600",
+          "behavior": "模板携带进度节奏、背景、质量、readiness等policy字符串。",
+          "decision": "legacy_mechanism_not_ported",
+          "workbench_evidence": [
+            {
+              "path": "backend/image_batch_control.py"
+            },
+            {
+              "path": "backend/delivery_readiness.py"
+            },
+            {
+              "path": "resources/comic-skills/references/final-input-semantics.md"
+            }
+          ],
+          "remaining": "这些policy并非工作台接口字段；批次计时和交付核对各有现有范围，不加载模板开启旧流水线。"
+        }
+      ],
+      "limits": [
+        "配置模板存在不代表宿主已执行相应policy；未新增外部配置导入或自动子agent。"
+      ],
+      "program_equivalence_verified": false
+    },
+    {
+      "source": "vertical-comic-preproduction/references/installation-update.md",
+      "source_sha256": "f9bc2f69ee48d164078a2af22e6df9d0f9dd0fea39509c77e4272306a2843792",
+      "disposition": "mixed",
+      "summary": "旧五件套Release安装更新与恢复属于Codex安装机制；工作台采用不可变规则包安装和项目显式选择。",
+      "clauses": [
+        {
+          "source_anchor": "普通制作不自动联网查版本或热更新。",
+          "behavior": "制作期间不因普通运行自动查网/热替换旧运行工具与规则。",
+          "decision": "semantic_retained",
+          "workbench_evidence": [
+            {
+              "path": "resources/comic-skills/workbench.md"
+            },
+            {
+              "path": "backend/skills.py"
+            },
+            {
+              "path": "backend/tests/test_bundled_comic_skills.py",
+              "test": "test_execution_reference_upgrade_is_explicit_and_preserves_pi3_frozen_resources"
+            }
+          ]
+        },
+        {
+          "source_anchor": "`check`",
+          "behavior": "check只查稳定Release及本地差异，update/restore分别改变托管安装，保留用户增补并检查哈希。",
+          "decision": "legacy_mechanism_not_ported",
+          "workbench_evidence": [
+            {
+              "path": "backend/bundled_skills.py"
+            },
+            {
+              "path": "backend/skills.py"
+            },
+            {
+              "path": "docs/backup-restore.md"
+            }
+          ],
+          "remaining": "本系统没有FightJs Release通道/个人CODEX_HOME回滚器；data停服备份不等于原安装回滚。"
+        }
+      ],
+      "limits": [
+        "不执行安装器、远程下载或改个人Skill；工作台安装不自动启用。"
+      ],
+      "program_equivalence_verified": false
+    },
+    {
+      "source": "vertical-comic-preproduction/references/quick-start.md",
+      "source_sha256": "7c690a83b2acb323c0cc137dc7036a1b8baeb3d65b0a3c82119c5a9628c7ce4f",
+      "disposition": "mixed",
+      "summary": "短入口的低负担输入和真实范围语义保留；prepare/receive/receive-resume与正式交接ZIP激活没有迁成工作台接口。",
+      "clauses": [
+        {
+          "source_anchor": "接包生产：免外部配置",
+          "behavior": "旧接包只需正式ZIP/包根，从包内读取源稿/资产/冻结输入，不重做前期配置。",
+          "decision": "needs_implementation",
+          "workbench_evidence": [
+            {
+              "path": "resources/comic-skills/workbench.md"
+            },
+            {
+              "path": "backend/delivery_readiness.py"
+            },
+            {
+              "path": "docs/backup-restore.md"
+            }
+          ],
+          "remaining": "工作台目前没有旧正式生产包接收、分卷汇集、bind/rehearse或执行视图切换协议；图片ZIP和data备份都不能替代。"
+        },
+        {
+          "source_anchor": "首次使用与短启动入口",
+          "behavior": "首次配置不让使用者手填policy；初始化不生正文图，保留候选与准确授权。",
+          "decision": "host_replaced",
+          "workbench_evidence": [
+            {
+              "path": "start.command"
+            },
+            {
+              "path": "backend/workflow.py"
+            },
+            {
+              "path": "backend/image_jobs.py"
+            },
+            {
+              "path": "frontend/src/Production.tsx"
+            }
+          ],
+          "remaining": "工作台以项目/话格和预览授权交互代替书籍profile/RV目录；非相同CLI输出。"
+        },
+        {
+          "source_anchor": "四小时内交齐，七小时有效运行硬停",
+          "behavior": "争取四小时、七小时有效硬限，恢复不能重开预算。",
+          "decision": "host_replaced",
+          "workbench_evidence": [
+            {
+              "path": "backend/image_batch_control.py"
+            },
+            {
+              "path": "backend/tests/test_image_batch_control.py"
+            }
+          ],
+          "remaining": "仅已实现图像批次时钟；不是前期/接包跨职责Hook时钟或旧完整交包保证。"
+        }
+      ],
+      "limits": [
+        "没有运行comic_start；真实依赖、人工采用审核仍独立；fresh/reuse/恢复细则另核pi.5，不在此宣布全部闭合。"
+      ],
+      "program_equivalence_verified": false
+    },
+    {
+      "source": "vertical-comic-preproduction/references/review-progress.md",
+      "source_sha256": "1dd087c344e7422d1e9185255d0aa4cf7856aadcfc90a6b8a01faa4e2781d746",
+      "disposition": "mixed",
+      "summary": "完成口径保留完整范围和真实缺口；不迁旧显示目录、百分比推进与finish-check命令。",
+      "clauses": [
+        {
+          "source_anchor": "指定总格数/已审采用数/可用数/人工后修数/人工优先数/未完成数及原因",
+          "behavior": "完整交付应列全部源格与未完原因，少量已采用图ZIP不能当最终完成。",
+          "decision": "host_replaced",
+          "workbench_evidence": [
+            {
+              "path": "backend/delivery_readiness.py"
+            },
+            {
+              "path": "frontend/src/DeliveryReadiness.tsx"
+            },
+            {
+              "path": "backend/tests/test_delivery_readiness.py"
+            }
+          ],
+          "remaining": "只读核对返回源格/阻断/数据库ready计数，不是旧六类统计、正式发布或100%认证。"
+        },
+        {
+          "source_anchor": "每30秒最多检查一次是否到期",
+          "behavior": "进度通知不定时重扫资产、解码哈希原图或重跑门禁。",
+          "decision": "semantic_retained",
+          "workbench_evidence": [
+            {
+              "path": "resources/comic-skills/workbench.md"
+            },
+            {
+              "path": "frontend/src/DeliveryReadiness.tsx"
+            }
+          ],
+          "remaining": "交付核对由用户点击读取；没有照搬30秒心跳或旧固定通知节奏。"
+        },
+        {
+          "source_anchor": "finish-check",
+          "behavior": "正式ZIP和验收报告核对后才100%，旧显示文件不参与批准。",
+          "decision": "legacy_mechanism_not_ported",
+          "workbench_evidence": [
+            {
+              "path": "resources/comic-skills/workbench.md"
+            },
+            {
+              "path": "backend/delivery_readiness.py"
+            }
+          ],
+          "remaining": "未移植00_显示进度、task_coordination与finish-check，不把数据库ready升为正式交付认证。"
+        }
+      ],
+      "limits": [
+        "本源关于轻/深审核和CSV/分卷的历史分歧以现有宿主明确范围为准；本审计不新增终审停点。"
+      ],
+      "program_equivalence_verified": false
+    },
+    {
+      "source": "vertical-comic-preproduction/references/usage-configuration.md",
+      "source_sha256": "42e3af080d4d8df05f72af9a8b8ffba2bb681c94a9f7eb981706c737a7715e1e",
+      "disposition": "mixed",
+      "summary": "comic_usage_v1的文件路径/策略组合属于旧配置协议；项目固定版本、运行容量与明确授权由宿主分开承接。",
+      "clauses": [
+        {
+          "source_anchor": "不把配置合法当成已授权/批准生产",
+          "behavior": "合法路径、书话和配置不授生产或批准权限。",
+          "decision": "host_replaced",
+          "workbench_evidence": [
+            {
+              "path": "backend/image_jobs.py"
+            },
+            {
+              "path": "backend/skills.py"
+            },
+            {
+              "path": "backend/workflow.py"
+            },
+            {
+              "path": "backend/tests/test_panel_images.py",
+              "test": "test_package_image_keeps_identity_and_requires_explicit_candidate_adoption"
+            }
+          ]
+        },
+        {
+          "source_anchor": "memory_source.loading_policy",
+          "behavior": "规则版本/读取策略一致，进入阶段基线和命中正文分开，旧运行不自动升级。",
+          "decision": "host_replaced",
+          "workbench_evidence": [
+            {
+              "path": "backend/skills.py"
+            },
+            {
+              "path": "backend/agent_tools.py"
+            },
+            {
+              "path": "resources/comic-skills/entries/comic-preproduction.md"
+            }
+          ],
+          "remaining": "宿主冻结包hash/阶段入口并按受控resource读取；未实现旧MEM缓存和loading_policy解析器。"
+        },
+        {
+          "source_anchor": "启动时子agent配置与实际容量",
+          "behavior": "区分配置worker数和实际会话容量；watchdog/进度不改变并发上限。",
+          "decision": "legacy_mechanism_not_ported",
+          "workbench_evidence": [
+            {
+              "path": "backend/capacity.py"
+            },
+            {
+              "path": "resources/comic-skills/workbench.md"
+            }
+          ],
+          "remaining": "不写Codex agents配置、自动派生worker或解析comic_usage_v1组合；宿主容量只管理现有模型池。"
+        }
+      ],
+      "limits": [
+        "背景/质量policy文本不作为可执行能力；旧RV不通过修改配置热升级。"
+      ],
+      "program_equivalence_verified": false
+    },
+    {
+      "source": "vertical-comic-preproduction/references/usage.md",
+      "source_sha256": "3337f884c4776b480b19d51af0c41006463e158b4823ca485587bed427ffe0b2",
+      "disposition": "mixed",
+      "summary": "保留只审不自动修、范围明确和旧版本诚实原则；旧五件套使用命令/双电脑交包不成为工作台能力。",
+      "clauses": [
+        {
+          "source_anchor": "只要求审查就停在审查",
+          "behavior": "只审查不得自动返修；仅用户指定单张完成后再下一张时采用该串行语义。",
+          "decision": "semantic_retained",
+          "workbench_evidence": [
+            {
+              "path": "backend/vision_reviews.py"
+            },
+            {
+              "path": "backend/image_jobs.py"
+            },
+            {
+              "path": "resources/comic-skills/references/light-review.md"
+            }
+          ],
+          "remaining": "视觉报告不自动采用或人工审核；批次返修须既有明确模式授权。"
+        },
+        {
+          "source_anchor": "恢复与规则版本",
+          "behavior": "旧运行按冻结版本恢复，缺证据不得用当前模板补成通过。",
+          "decision": "host_replaced",
+          "workbench_evidence": [
+            {
+              "path": "backend/skills.py"
+            },
+            {
+              "path": "backend/production_resume.py"
+            },
+            {
+              "path": "docs/backup-restore.md"
+            }
+          ],
+          "remaining": "Pi干净检查点/受控回执恢复不是任意旧RV恢复；跨电脑正式ZIP路线未实现。"
+        }
+      ],
+      "limits": [
+        "没有执行本使用指南中的外部脚本或安装动作；只把本次范围内可用接口告诉用户。"
+      ],
+      "program_equivalence_verified": false
+    },
+    {
+      "source": "vertical-comic-preproduction/references/workspace-adapter.md",
+      "source_sha256": "b9070a18de896cab4a6257e6db152b8e7ff9074d7cb319f0f21335a4030c6dfc",
+      "disposition": "mixed",
+      "summary": "旧排版路径和CAMERA状态字段不迁；镜头候选/明确采用的权限边界保留。",
+      "clauses": [
+        {
+          "source_anchor": "当前排版工作区默认位于",
+          "behavior": "旧个人排版工作区路径只适用于原宿主，不能作为本项目文件或启动入口。",
+          "decision": "legacy_mechanism_not_ported",
+          "workbench_evidence": [
+            {
+              "path": "resources/comic-skills/workbench.md"
+            },
+            {
+              "path": "start.command"
+            }
+          ],
+          "remaining": "工作台不进入排版/气泡/PSD流程，不扫描旧路径。"
+        },
+        {
+          "source_anchor": "CAMERA_CANDIDATE",
+          "behavior": "未锁机位不能冒充批准；原CAMERA_HOLD/CANDIDATE通过准确审核再进入包。",
+          "decision": "host_replaced",
+          "workbench_evidence": [
+            {
+              "path": "backend/workflow.py"
+            },
+            {
+              "path": "backend/production_text.py"
+            },
+            {
+              "path": "resources/comic-skills/references/quality-gates.md"
+            }
+          ],
+          "remaining": "本系统记录文本候选、采用和review；没有CAMERA独立状态或其确定性几何门禁。"
+        }
+      ],
+      "limits": [
+        "不新增CAMERA字段/排版许可或另一个镜头账本。"
+      ],
+      "program_equivalence_verified": false
+    },
+    {
+      "source": "vertical-comic-preproduction/references/条漫Skill使用提示词.md",
+      "source_sha256": "7722e1950fa57808f3bfd01306f7b4ef56bc78d5ba605f8560fc4343a4bc7af0",
+      "disposition": "mixed",
+      "summary": "自然语言短指令可减少配置负担，源内安装/preview/wall/完整封包命令不能由规则文本暗中授权。",
+      "clauses": [
+        {
+          "source_anchor": "仅查看、讨论这些用法不代表授权执行示例中的更新或制作。",
+          "behavior": "引用模板或讨论用法不能启动安装、生成或返修；占位符不是实际输入。",
+          "decision": "semantic_retained",
+          "workbench_evidence": [
+            {
+              "path": "resources/comic-skills/workbench.md"
+            },
+            {
+              "path": "backend/image_jobs.py"
+            },
+            {
+              "path": "backend/setup_assistant.py"
+            }
+          ]
+        },
+        {
+          "source_anchor": "默认计时为`--clock-mode active`",
+          "behavior": "active不计等待/暂停，wall另需明确选择；旧说明存在四小时/七小时不同口径。",
+          "decision": "mixed",
+          "workbench_evidence": [
+            {
+              "path": "backend/image_batch_control.py"
+            },
+            {
+              "path": "docs/runtime-capacity.md"
+            }
+          ],
+          "remaining": "工作台仅批次4小时目标/7小时有效硬限，不迁wall模式或源跨职责时钟，也不从文中4小时上限段落重置既有预算。"
+        },
+        {
+          "source_anchor": "明确使用preview通道",
+          "behavior": "模板明确preview下载main提交、安装更新与正式分卷接包。",
+          "decision": "legacy_mechanism_not_ported",
+          "workbench_evidence": [
+            {
+              "path": "backend/skills.py"
+            },
+            {
+              "path": "resources/comic-skills/workbench.md"
+            }
+          ],
+          "remaining": "不执行preview更新，不改个人Skill；旧文档路径回退只适用于使用说明，不替代缺失真实输入。"
+        }
+      ],
+      "limits": [
+        "短指令不构成工作台包接收/正式ZIP发布已实现证据；完整交付当前只能诚实列缺口。"
+      ],
+      "program_equivalence_verified": false
+    },
+    {
+      "source": "vertical-comic-preproduction/scripts/agent_capacity.py",
+      "source_sha256": "e7c78328e4b9e36646d15d799b7d6c325e5ae1c25818d7e509b13b7c6fbec01f",
+      "disposition": "mixed",
+      "summary": "旧脚本原子修改Codex config.toml子agent限额；宿主仅接现有文本/图像/视觉容量，不操作用户配置。",
+      "clauses": [
+        {
+          "source_anchor": "def inspect(path):",
+          "behavior": "拒绝符号链接、无效agents表及新旧max_threads限额冲突，并把当前会话真实容量标未知。",
+          "decision": "semantic_retained",
+          "workbench_evidence": [
+            {
+              "path": "backend/capacity.py"
+            },
+            {
+              "path": "docs/runtime-capacity.md"
+            }
+          ],
+          "remaining": "保留配置值不等于真实远端容量原则；未照搬该TOML解析/检查。"
+        },
+        {
+          "source_anchor": "def ensure(path=None, *, target=TARGET, write=True):",
+          "behavior": "目标默认6，验证原文未变后原子更新配置，保留其余字段和权限。",
+          "decision": "legacy_mechanism_not_ported",
+          "workbench_evidence": [
+            {
+              "path": "resources/comic-skills/workbench.md"
+            },
+            {
+              "path": "backend/capacity.py"
+            }
+          ],
+          "remaining": "不改~/.codex/config.toml、不启用agents、不建立6槽或自动子agent。"
+        }
+      ],
+      "limits": [
+        "模型池并发不等于Codex子会话容量，不能用容量API宣称脚本等价。"
+      ],
+      "program_equivalence_verified": false
+    },
+    {
+      "source": "vertical-comic-preproduction/scripts/comic_start.py",
+      "source_sha256": "5b3127f7a242bf918fc5291746e716c6ee2b74564c0f75fd920592c7e811f020",
+      "disposition": "mixed",
+      "summary": "prepare/receive/activate是旧文件生产总入口；本系统以项目记录/图像批次/检查点承接部分行为，无原入口移植。",
+      "clauses": [
+        {
+          "source_anchor": "def prepare(project,book,ids,",
+          "behavior": "原prepare核书籍profile、脚本/资产、唯一RV、来源、冻结工具、各话初始化与启动摘要。",
+          "decision": "mixed",
+          "workbench_evidence": [
+            {
+              "path": "backend/workflow.py"
+            },
+            {
+              "path": "backend/store.py"
+            },
+            {
+              "path": "backend/skills.py"
+            }
+          ],
+          "remaining": "工作台保留项目/任务版本与固定输入，不创建书籍profile/RV/旧任务来源JSON；fresh/reuse归属的增量另核，不能据此称原prepare等价。"
+        },
+        {
+          "source_anchor": "def receive_resume(run_root, *, audit_timeout=900):",
+          "behavior": "恢复原接包索引、原件hash和原职责预算，不重新解包/bind/开时钟；已有许可走原生产入口。",
+          "decision": "needs_implementation",
+          "workbench_evidence": [
+            {
+              "path": "docs/backup-restore.md"
+            },
+            {
+              "path": "backend/production_resume.py"
+            },
+            {
+              "path": "resources/comic-skills/workbench.md"
+            }
+          ],
+          "remaining": "现有Pi续接和data恢复不是正式ZIP receive-resume协议；不执行冻结旧generation_host。"
+        },
+        {
+          "source_anchor": "def start_clock(run, role, limit, session,",
+          "behavior": "启动默认active或明确wall，并可绑定真实Hook身份；init时间也收费进预算。",
+          "decision": "mixed",
+          "workbench_evidence": [
+            {
+              "path": "backend/image_batch_control.py"
+            },
+            {
+              "path": "resources/comic-skills/workbench.md"
+            }
+          ],
+          "remaining": "当前仅批次有效时间，无prepare/receive职责时钟、wall模式、Hook身份或start_display/activate事务。"
+        }
+      ],
+      "limits": [
+        "源main还会agent_capacity.ensure；明确不搬其个人配置写入、副进程执行与自动接包激活。"
+      ],
+      "program_equivalence_verified": false
+    },
+    {
+      "source": "vertical-comic-preproduction/scripts/installation_state.py",
+      "source_sha256": "352eb5a361cc4d53bfa647436a2fdf999739cd23d89acff3f1f95802fc4cbd9c",
+      "disposition": "legacy_mechanism_not_ported",
+      "summary": "这是五件套个人安装回滚器，不是项目数据备份；其安全意图由工作台不可变包与明确升级体现。",
+      "clauses": [
+        {
+          "source_anchor": "def inventory(root,targets=TARGETS):",
+          "behavior": "盘点五个Skill和托管memory文件hash，拒绝符号链接。",
+          "decision": "legacy_mechanism_not_ported",
+          "workbench_evidence": [
+            {
+              "path": "backend/skills.py"
+            },
+            {
+              "path": "backend/bundled_skills.py"
+            }
+          ],
+          "remaining": "不盘点/备份个人CODEX_HOME；项目data备份另见backup，不混淆两个范围。"
+        },
+        {
+          "source_anchor": "def restore(home,backup_id=None,*,replace_existing=False):",
+          "behavior": "仅完整备份可恢复，核本地差异、保留用户增补、隔离验证、锁内交换并失败回滚。",
+          "decision": "host_replaced",
+          "workbench_evidence": [
+            {
+              "path": "backend/skills.py"
+            },
+            {
+              "path": "docs/backup-restore.md"
+            }
+          ],
+          "remaining": "宿主旧包hash保持可选择且新选择显式；未搬原installer staging/恢复算法，data演练亦不证明原安装恢复。"
+        }
+      ],
+      "limits": [
+        "不访问个人增补、不执行旧验证脚本；本文件程序不装入运行包。"
+      ],
+      "program_equivalence_verified": false
+    },
+    {
+      "source": "vertical-comic-preproduction/scripts/runtime_capabilities.json",
+      "source_sha256": "5ec41eb83b543d1ad6d9d5a8cf8392a6b64ad79a5434a473b365db6e091e5084",
+      "disposition": "mixed",
+      "summary": "旧能力清单是声明而非宿主能力；需逐项映射，不能把legacy policy字串当功能开关。",
+      "clauses": [
+        {
+          "source_anchor": "\"prepared_panel_inputs\": \"final_input_semantics_v2\"",
+          "behavior": "声明prepared输入/不可变读集/等价rebind/内容验证缓存和一次claim-and-register。",
+          "decision": "legacy_mechanism_not_ported",
+          "workbench_evidence": [
+            {
+              "path": "resources/comic-skills/references/final-input-semantics.md"
+            },
+            {
+              "path": "resources/comic-skills/workbench.md"
+            },
+            {
+              "path": "backend/image_jobs.py"
+            }
+          ],
+          "remaining": "宿主有固定预览和事务调用账本，但无该prepared/rebind协议，不能复用旧已批准文件读集。"
+        },
+        {
+          "source_anchor": "\"light_image_review\"",
+          "behavior": "声明严重剧情最多一轮返修、未知不重发与默认active目标/硬限。",
+          "decision": "host_replaced",
+          "workbench_evidence": [
+            {
+              "path": "backend/image_postprocess.py"
+            },
+            {
+              "path": "backend/image_attempts.py"
+            },
+            {
+              "path": "backend/image_batch_control.py"
+            }
+          ],
+          "remaining": "仅现有批次模式/明确网络重试上限；不继承清单中的所有owner/worker/机器资源策略。"
+        },
+        {
+          "source_anchor": "\"wall_delivery_opt_in\": \"--clock-mode wall\"",
+          "behavior": "还声明wall、跨职责阶段降级、正式交包、双机接收和图像工具bridge。",
+          "decision": "legacy_mechanism_not_ported",
+          "workbench_evidence": [
+            {
+              "path": "resources/comic-skills/workbench.md"
+            },
+            {
+              "path": "backend/delivery_readiness.py"
+            }
+          ],
+          "remaining": "无wall、旧Hook、图像工具bridge、900MB分卷或完整正式封包能力；本次不因声明新增shell或工具。"
+        }
+      ],
+      "limits": [
+        "每个bool/default_enabled都只说明旧源；新功能需独立实现证据，不能把JSON安装当接通。"
+      ],
+      "program_equivalence_verified": false
+    },
+    {
+      "source": "vertical-comic-preproduction/scripts/runtime_clock_context.py",
+      "source_sha256": "a34346f9faf19f309ab511161281168ecceaf0162d0db2aa3786b0ac5525e5f1",
+      "disposition": "mixed",
+      "summary": "源用真实Hook事件绑定Codex线程；工作台用自己的pid/batch绑定，不推测个人会话。",
+      "clauses": [
+        {
+          "source_anchor": "def observe(payload, home=None):",
+          "behavior": "只接受SessionStart/PreToolUse/Interrupt，保存session/turn身份回执。",
+          "decision": "legacy_mechanism_not_ported",
+          "workbench_evidence": [
+            {
+              "path": "resources/comic-skills/workbench.md"
+            },
+            {
+              "path": "backend/image_batch_control.py"
+            }
+          ],
+          "remaining": "不监听Codex Hook、不写clock-contexts或读取CODEX_THREAD_ID。"
+        },
+        {
+          "source_anchor": "def resolve(home=None, *, explicit_session=None, environ=None, now=None):",
+          "behavior": "线程缺失、显式身份不符或Hook回执过旧时拒绝，不以最近目录猜测绑定。",
+          "decision": "host_replaced",
+          "workbench_evidence": [
+            {
+              "path": "backend/image_batch_control.py"
+            },
+            {
+              "path": "backend/production_resume.py"
+            }
+          ],
+          "remaining": "工作台绑定批次/原run归属，非旧Hook freshness和双向clock-session指针协议。"
+        }
+      ],
+      "limits": [
+        "当前不提供全职责中断时钟；无真实Hook回执不得称自动暂停接线通过。"
+      ],
+      "program_equivalence_verified": false
+    },
+    {
+      "source": "vertical-comic-preproduction/scripts/runtime_clock_hook.py",
+      "source_sha256": "aee1bfd142420b32089f2b9d525b17469398394fc5534f2b5e8460d9f5b6429e",
+      "disposition": "legacy_mechanism_not_ported",
+      "summary": "原Interrupt Hook把暂停事件写到绑定职责时钟；不把它加载进工作台或用户宿主。",
+      "clauses": [
+        {
+          "source_anchor": "def handle(payload, home=None):",
+          "behavior": "PreToolUse/SessionStart记录身份，Interrupt仅作用于匹配已有绑定，错误明确自动暂停未确认。",
+          "decision": "legacy_mechanism_not_ported",
+          "workbench_evidence": [
+            {
+              "path": "resources/comic-skills/workbench.md"
+            },
+            {
+              "path": "backend/manual_pause.py"
+            },
+            {
+              "path": "backend/image_batch_control.py"
+            }
+          ],
+          "remaining": "工作台显式暂停及批次计时不等于宿主Interrupt按钮Hook；不能据此扣除任意停顿时间。"
+        },
+        {
+          "source_anchor": "source='hook:Interrupt'",
+          "behavior": "Hook真实事件才可证明中断暂停，不能从文字或安装成功推定用户已暂停。",
+          "decision": "semantic_retained",
+          "workbench_evidence": [
+            {
+              "path": "backend/image_batch_control.py"
+            },
+            {
+              "path": "docs/pi-run-checkpoints.md"
+            }
+          ]
+        }
+      ],
+      "limits": [
+        "不安装hooks.json、不声称已获宿主信任；保留旧源作为边界说明。"
+      ],
+      "program_equivalence_verified": false
+    },
+    {
+      "source": "vertical-comic-preproduction/scripts/runtime_clock_setup.py",
+      "source_sha256": "196bd7982051052540519851ec574aca427a3aa1ddc7c23c991b390935ec2b1b",
+      "disposition": "legacy_mechanism_not_ported",
+      "summary": "稳定Python复制和hooks.json备份迁移是个人环境安装行为，工作台不执行。",
+      "clauses": [
+        {
+          "source_anchor": "def prepare_runtime(home, *, python=None):",
+          "behavior": "探测依赖、创建稳定venv并复制受控依赖，拒绝逃逸路径。",
+          "decision": "legacy_mechanism_not_ported",
+          "workbench_evidence": [
+            {
+              "path": "start.command"
+            },
+            {
+              "path": "resources/comic-skills/workbench.md"
+            }
+          ],
+          "remaining": "项目start.command使用自己的锁定Python/Node依赖；不是个人clock-runtime复制器。"
+        },
+        {
+          "source_anchor": "def setup(home, *, python=None, apply=False):",
+          "behavior": "预览/应用分开、锁内备份原hooks、移除本脚本旧项并写新定义，返回仍需用户信任和真按钮验证。",
+          "decision": "legacy_mechanism_not_ported",
+          "workbench_evidence": [
+            {
+              "path": "resources/comic-skills/workbench.md"
+            },
+            {
+              "path": "backend/manual_pause.py"
+            }
+          ],
+          "remaining": "不写个人hooks.json/命令字符串，不把项目暂停API冒充Hook安装和信任。"
+        }
+      ],
+      "limits": [
+        "迁移不需要新增shell Hook或申请/伪造宿主信任。"
+      ],
+      "program_equivalence_verified": false
+    },
+    {
+      "source": "vertical-comic-preproduction/scripts/runtime_environment.py",
+      "source_sha256": "eadabccb066d88e1ffe7caa423422b4f2825d1fef3ef28d83ada5ba59fad4630",
+      "disposition": "mixed",
+      "summary": "旧环境检查覆盖Python3.12、旧模块、可写UTF8和可选SVG；项目采用自己的启动依赖和健康边界。",
+      "clauses": [
+        {
+          "source_anchor": "def check(*, probe_root=None, require_svg=False):",
+          "behavior": "检查解释器、旧CORE模块/Pillow/yaml/openpyxl、UTF8往返及可选cairosvg，返回PASS或ENVIRONMENT_HOLD。",
+          "decision": "host_replaced",
+          "workbench_evidence": [
+            {
+              "path": "start.command"
+            },
+            {
+              "path": "backend/agent_runtime.py"
+            },
+            {
+              "path": "backend/requirements-lock.txt"
+            }
+          ],
+          "remaining": "只替代项目实际Python/Node/依赖需求；没有测试所有旧脚本或保证可选SVG能力。"
+        },
+        {
+          "source_anchor": "def require_ready(**kwargs):",
+          "behavior": "环境不满足时在执行前阻止，不把基础存在性检查当实际生图或审核。",
+          "decision": "semantic_retained",
+          "workbench_evidence": [
+            {
+              "path": "backend/image_jobs.py"
+            },
+            {
+              "path": "backend/image_provider.py"
+            },
+            {
+              "path": "resources/comic-skills/workbench.md"
+            }
+          ]
+        }
+      ],
+      "limits": [
+        "未运行旧check导入器；项目健康不等于供应商连接验证。"
+      ],
+      "program_equivalence_verified": false
+    },
+    {
+      "source": "vertical-comic-preproduction/scripts/runtime_snapshot.py",
+      "source_sha256": "677282767ac0b86e8118d969f06ad929d58ebd6b1ecc83d24a359e504a3045bc",
+      "disposition": "mixed",
+      "summary": "源冻结整套五Skill脚本与memory为不可覆盖快照；宿主冻结规则包和输入版本，但不冻结任意旧解释器/代码。",
+      "clauses": [
+        {
+          "source_anchor": "def create(destination, *, skills_root=None, memory_source=None):",
+          "behavior": "唯一新目录，复制期间hash复核，规则来源越界/变化拒绝，生成manifest并原子激活。",
+          "decision": "host_replaced",
+          "workbench_evidence": [
+            {
+              "path": "backend/skills.py"
+            },
+            {
+              "path": "backend/store.py"
+            },
+            {
+              "path": "backend/tests/test_bundled_comic_skills.py",
+              "test": "test_execution_reference_upgrade_is_explicit_and_preserves_pi3_frozen_resources"
+            }
+          ],
+          "remaining": "宿主固定hash规则文本及记录版本，不复制整个旧scripts/解释器成RV可执行快照。"
+        },
+        {
+          "source_anchor": "def _verify(ref, *, executing_script=None):",
+          "behavior": "校验完整文件集合、manifest、执行脚本路径和memory绑定，禁止混用安装版本。",
+          "decision": "mixed",
+          "workbench_evidence": [
+            {
+              "path": "backend/skills.py"
+            },
+            {
+              "path": "backend/agent_tools.py"
+            },
+            {
+              "path": "docs/backup-restore.md"
+            }
+          ],
+          "remaining": "资源hash与引用边界保留；工作台应用代码升级不能据此宣称全部旧冻结可执行工具链兼容。"
+        }
+      ],
+      "limits": [
+        "运行层精确会话分支另有账本；规则快照不能代替Pi检查点或付费调用恢复。"
+      ],
+      "program_equivalence_verified": false
+    },
+    {
+      "source": "vertical-comic-preproduction/scripts/update_skills.py",
+      "source_sha256": "d9bbed00fc85e8653e7ef0cd790a685f55fdf86dfcc1be3c0380298500932fba",
+      "disposition": "legacy_mechanism_not_ported",
+      "summary": "旧GitHub stable/preview下载校验及installer执行不进入工作台；使用宿主已安装包的明确选择。",
+      "clauses": [
+        {
+          "source_anchor": "def remote_version(channel='stable'):",
+          "behavior": "stable仅正式Release附件+checksum，preview固定40位commit，不默默退main或降级。",
+          "decision": "legacy_mechanism_not_ported",
+          "workbench_evidence": [
+            {
+              "path": "backend/bundled_skills.py"
+            },
+            {
+              "path": "backend/skills.py"
+            },
+            {
+              "path": "resources/comic-skills/workbench.md"
+            }
+          ],
+          "remaining": "没有后台远程查版、FightJs安装通道或GitHub下载；不执行安装脚本。"
+        },
+        {
+          "source_anchor": "def unpack(archive,destination):",
+          "behavior": "拒绝超大/过多成员/重复别名/符号链接/越界ZIP，验证payload后才原子安装并保留本地修改。",
+          "decision": "host_replaced",
+          "workbench_evidence": [
+            {
+              "path": "backend/skills.py"
+            },
+            {
+              "path": "backend/tests/test_skills.py",
+              "test": "test_zip_and_paths_are_validated_without_extracting"
+            }
+          ],
+          "remaining": "工作台验证comic-skill文本包、不解压执行；其限额和manifest不同，非旧五件套ZIP完整安装器。"
+        }
+      ],
+      "limits": [
+        "不读写CODEX_HOME，不上传贡献；代码review本身不授权更新。"
+      ],
+      "program_equivalence_verified": false
+    },
+    {
+      "source": "vertical-comic-preproduction/scripts/usage_config.py",
+      "source_sha256": "c01c62d7cde72d1bd514e749a37271f6edac92396a30eabe7bf132b1034055f0",
+      "disposition": "mixed",
+      "summary": "旧配置严格解析与容量推导不直接迁；宿主采用自身schema和运行池，配置不自动授生产权限。",
+      "clauses": [
+        {
+          "source_anchor": "def read_config(path, *, frozen_memory_source=None):",
+          "behavior": "必须且只能script_path/script_root、绝对存在输入、准确书话、互相匹配的全话/质量/规则policy，显式失效不回退。",
+          "decision": "host_replaced",
+          "workbench_evidence": [
+            {
+              "path": "backend/production_text.py"
+            },
+            {
+              "path": "backend/image_jobs.py"
+            },
+            {
+              "path": "backend/skills.py"
+            }
+          ],
+          "remaining": "项目用record/version和包引用代替绝对路径配置；没有comic_usage_v1的完整解析器和策略组合门禁。"
+        },
+        {
+          "source_anchor": "def runtime_limits(config, agent_slots, backend_limit=None,",
+          "behavior": "按真实agent总槽减总控、活动话实际格数与已知backend limit推导worker/inflight，未知容量不冒充已验证。",
+          "decision": "mixed",
+          "workbench_evidence": [
+            {
+              "path": "backend/capacity.py"
+            },
+            {
+              "path": "docs/runtime-capacity.md"
+            }
+          ],
+          "remaining": "保留容量未知与配置区分；不推导每话worker/半话格数或用子agent槽算图像池。"
+        }
+      ],
+      "limits": [
+        "不自动扩大容量或重签旧运行策略；运行配置有效不等于模型连通或已生产。"
+      ],
+      "program_equivalence_verified": false
+    },
+    {
+      "source": "vertical-comic-preproduction/references/codex-imagegen.md",
+      "source_sha256": "1c583e67df6f52d6610ce5e949ff0c15da23b44d49a978ea559f95020d180329",
+      "disposition": "mixed",
+      "summary": "真实参考、画风和原件证据保留；Codex本地调用计划由工作台HTTP适配器承接，旧构图/风格字段未全搬。",
+      "clauses": [
+        {
+          "source_anchor": "实际路径总数不得超过5",
+          "behavior": "同图多用途可复用一个输入，参考含身份、衣装、场景、画风；不能按预算截断必需来源。",
+          "decision": "semantic_retained",
+          "workbench_evidence": [
+            {
+              "path": "resources/comic-skills/references/reference-budget.md"
+            },
+            {
+              "path": "backend/panel_image_inputs.py"
+            }
+          ],
+          "remaining": "五份创作预算与宿主16参考技术上限不同；非原validator已迁。"
+        },
+        {
+          "source_anchor": "style_review",
+          "behavior": "风格须对照真实批准样例，未观察/风格失败不能被其他维度PASS抵消。",
+          "decision": "mixed",
+          "workbench_evidence": [
+            {
+              "path": "backend/vision_reviews.py"
+            },
+            {
+              "path": "resources/comic-skills/references/quality-gates.md"
+            },
+            {
+              "path": "backend/delivery_readiness.py"
+            }
+          ],
+          "remaining": "视觉报告可分类style，没有独立style_review状态或自动IMAGE_STYLE_HOLD。"
+        },
+        {
+          "source_anchor": "arguments",
+          "behavior": "导出prompt/本地参考/透明参数只是计划；实际请求输入hash和返回需观察证据。",
+          "decision": "host_replaced",
+          "workbench_evidence": [
+            {
+              "path": "backend/image_provider.py"
+            },
+            {
+              "path": "backend/tests/test_image_provider.py"
+            }
+          ],
+          "remaining": "HTTP manifest/file_id/multipart替代Codex参数；不虚构seed/ControlNet能力。"
+        }
+      ],
+      "limits": [
+        "未运行旧工具；没有完整构图/CAMERA或实图画风语义质量等价证明。"
+      ],
+      "program_equivalence_verified": false
+    },
+    {
+      "source": "vertical-comic-preproduction/references/draft-authoring.md",
+      "source_sha256": "f06913d51dee69d7048292528cefb97d877ad1d62981a93e6b9c8c34dff29fd1",
+      "disposition": "mixed",
+      "summary": "主稿职责分离和增量真实依赖语义保留，旧主表/确定性派生/图集缓存未迁。",
+      "clauses": [
+        {
+          "source_anchor": "唯一主表",
+          "behavior": "原文、shot和execution分工，冲突先解；新内容在主表创作，派生不授批准。",
+          "decision": "host_replaced",
+          "workbench_evidence": [
+            {
+              "path": "backend/store.py"
+            },
+            {
+              "path": "backend/production_text.py"
+            },
+            {
+              "path": "backend/workflow.py"
+            }
+          ],
+          "remaining": "工作台script/package是显式版本绑定，不是原panel_authoring_source主表或自动派生器。"
+        },
+        {
+          "source_anchor": "依赖指纹包含实际使用的主表字段",
+          "behavior": "文件、符号链接、显式目录查询及传递JSON引用变化使相关派生失效，未变内容hash核对复用。",
+          "decision": "legacy_mechanism_not_ported",
+          "workbench_evidence": [
+            {
+              "path": "resources/comic-skills/references/final-input-semantics.md"
+            },
+            {
+              "path": "backend/image_dependencies.py"
+            },
+            {
+              "path": "resources/comic-skills/workbench.md"
+            }
+          ],
+          "remaining": "只有显式record/version和前图DAG；没有该文件指纹、自动derive或忠实原像素图集缓存。"
+        }
+      ],
+      "limits": [
+        "缓存命中不是已看图或已批准；性能和产物程序等价未证明。"
+      ],
+      "program_equivalence_verified": false
+    },
+    {
+      "source": "vertical-comic-preproduction/references/generation-io.md",
+      "source_sha256": "4c5719f0faf778d6713f4e0fb6201b972adddcfa4d926dea411f6aeec2768662",
+      "disposition": "mixed",
+      "summary": "每格实际输入与返回持久化由宿主承接；输出规格/完整ZIP交付仍有明确缺口。",
+      "clauses": [
+        {
+          "source_anchor": "实际prompt",
+          "behavior": "最终文本与真实参考顺序/职责一致，不以文件名代替传图；修图保留原批准依据。",
+          "decision": "host_replaced",
+          "workbench_evidence": [
+            {
+              "path": "backend/panel_image_inputs.py"
+            },
+            {
+              "path": "backend/image_provider.py"
+            },
+            {
+              "path": "resources/comic-skills/references/prompt-package.md"
+            }
+          ],
+          "remaining": "现有固定版本预览非旧prompt.txt/manifest编译器。"
+        },
+        {
+          "source_anchor": "输出规格使用每格",
+          "behavior": "按format/min尺寸/exact_size/ratio验收，不拉伸裁掉必显内容；视觉通过与规格通过分开。",
+          "decision": "needs_implementation",
+          "workbench_evidence": [
+            {
+              "path": "backend/image_provider.py"
+            },
+            {
+              "path": "backend/vision_reviews.py"
+            }
+          ],
+          "remaining": "目前仅格式/尺寸安全检查与宽高记录，无完整output_spec与等比派生QA链。"
+        },
+        {
+          "source_anchor": "完整交付与容量门禁",
+          "behavior": "原正式交接ZIP容量分卷、成品问题CSV和统一交付验收通过后才能100%。",
+          "decision": "needs_implementation",
+          "workbench_evidence": [
+            {
+              "path": "backend/delivery_readiness.py"
+            },
+            {
+              "path": "backend/app.py"
+            },
+            {
+              "path": "resources/comic-skills/workbench.md"
+            }
+          ],
+          "remaining": "现有ZIP仅选中采用图片，readiness是数据库核对，不生成正式成品、CSV或900MB分卷。"
+        }
+      ],
+      "limits": [
+        "failed_transfers/action_contact、owner/epoch与完整封包合同未全实现；不以规则宣称生效。"
+      ],
+      "program_equivalence_verified": false
+    },
+    {
+      "source": "vertical-comic-preproduction/references/production-foundation.md",
+      "source_sha256": "e38c9cdfc85ffac09674ef5fc47734ca334285eaed6e4d5a33099379314cf3fd",
+      "disposition": "mixed",
+      "summary": "锁定源文和物理/场景/剧情/画风同时成立的创作规则保留，原全套启动门禁未迁。",
+      "clauses": [
+        {
+          "source_anchor": "Absolute script lock",
+          "behavior": "镜头/图像保留源格、文字、人物关系、事件与结果；改剧情回用户授权的脚本候选。",
+          "decision": "semantic_retained",
+          "workbench_evidence": [
+            {
+              "path": "resources/comic-skills/references/quality-gates.md"
+            },
+            {
+              "path": "resources/comic-skills/workbench.md"
+            },
+            {
+              "path": "backend/production_text.py"
+            },
+            {
+              "path": "backend/workflow.py"
+            }
+          ]
+        },
+        {
+          "source_anchor": "放到沙发上",
+          "behavior": "场景无桌而剧情指定放合同到桌上时，保留原文并列准确冲突，不能造桌或换对象掩盖。",
+          "decision": "semantic_retained",
+          "workbench_evidence": [
+            {
+              "path": "resources/comic-skills/workbench.md"
+            },
+            {
+              "path": "resources/comic-skills/references/final-input-semantics.md"
+            },
+            {
+              "path": "resources/comic-skills/rules/MEM-006.md"
+            }
+          ],
+          "remaining": "规则不代表已实现SCRIPT_CONFLICT自动语义检测。"
+        },
+        {
+          "source_anchor": "Required startup route",
+          "behavior": "旧模式/启动/停止点及便携规则源有正式批准范围约束。",
+          "decision": "host_replaced",
+          "workbench_evidence": [
+            {
+              "path": "backend/skills.py"
+            },
+            {
+              "path": "backend/image_jobs.py"
+            },
+            {
+              "path": "backend/production_references.py"
+            }
+          ],
+          "remaining": "当前冻结/预览/采用/review只替代对应权限关口，不恢复旧A/B/C/D流程。"
+        }
+      ],
+      "limits": [
+        "文本约束不证明空间或视觉正确；不封死脚本编辑阶段用户明确授权修改。"
+      ],
+      "program_equivalence_verified": false
+    },
+    {
+      "source": "vertical-comic-preproduction/references/schemas.md",
+      "source_sha256": "ef6b75e9bb81f64dce89035da787a84b08f78b217ed2a221801430e5d267a81f",
+      "disposition": "mixed",
+      "summary": "旧schema说明证据粒度，宿主仅支持现有严格schema，不因规则文字虚构字段已生效。",
+      "clauses": [
+        {
+          "source_anchor": "locked_script",
+          "behavior": "锁文、视觉方案、身份/站位/提示词分开；待确认内容不编译为APPROVED。",
+          "decision": "semantic_retained",
+          "workbench_evidence": [
+            {
+              "path": "resources/comic-skills/references/final-input-semantics.md"
+            },
+            {
+              "path": "resources/comic-skills/references/quality-gates.md"
+            },
+            {
+              "path": "resources/comic-skills/references/identity-confirmation.md"
+            }
+          ],
+          "remaining": "没有完整旧JSON/CAMERA/站位批准字段。"
+        },
+        {
+          "source_anchor": "state.dispatch_ledger",
+          "behavior": "旧epoch/lease/permit与UNKNOWN占槽、grouped review准确item范围各自核验。",
+          "decision": "host_replaced",
+          "workbench_evidence": [
+            {
+              "path": "backend/image_jobs.py"
+            },
+            {
+              "path": "backend/image_provider.py"
+            },
+            {
+              "path": "backend/image_attempts.py"
+            }
+          ],
+          "remaining": "当前job/call/attempt不是可直接导入原owner/epoch授权链。"
+        },
+        {
+          "source_anchor": "最终输入收敛v2",
+          "behavior": "旧prepared/最终语义审查字段绑定实际源格与内容。",
+          "decision": "legacy_mechanism_not_ported",
+          "workbench_evidence": [
+            {
+              "path": "backend/production_text.py"
+            },
+            {
+              "path": "backend/vision_reviews.py"
+            },
+            {
+              "path": "resources/comic-skills/workbench.md"
+            }
+          ],
+          "remaining": "当前schema优先，无旧prepared语义指纹及审核缓存。"
+        }
+      ],
+      "limits": [
+        "字段完整不证明批准真实或像素正确；不可混合policy认证旧包。"
+      ],
+      "program_equivalence_verified": false
+    },
+    {
+      "source": "vertical-comic-preproduction/references/stage-input-audit.md",
+      "source_sha256": "7e8518328e90b1f52dad5d2b240579f008a3cc1fd9c87fca53724e6183012c91",
+      "disposition": "mixed",
+      "summary": "指定输入、集中准确缺口语义保留；旧全话准备审计及原始XLSX证据尚无完整接线。",
+      "clauses": [
+        {
+          "source_anchor": "fresh从指定源稿提取本批实际需求",
+          "behavior": "先确定任务来源，只核本次脚本/资产/适用批准，不为失效旧路径搜索其他生产历史。",
+          "decision": "semantic_retained",
+          "workbench_evidence": [
+            {
+              "path": "resources/comic-skills/references/final-input-semantics.md"
+            },
+            {
+              "path": "resources/comic-skills/references/costume-handoff.md"
+            },
+            {
+              "path": "backend/agent_tools.py"
+            }
+          ],
+          "remaining": "fresh/reuse/恢复由pi.5另核，固定资料不代表全库扫描。"
+        },
+        {
+          "source_anchor": "可移植XLSX读取",
+          "behavior": "openpyxl采集真实工作表/坐标/原文/公式及源hash，只输出原始证据，不推断话格/批准。",
+          "decision": "needs_implementation",
+          "workbench_evidence": [
+            {
+              "path": "backend/graph_documents.py"
+            },
+            {
+              "path": "backend/agent_tools.py"
+            },
+            {
+              "path": "resources/comic-skills/workbench.md"
+            }
+          ],
+          "remaining": "当前TXT/DOCX/PDF解析不实现XLSX单元格证据/source_adapter链。"
+        },
+        {
+          "source_anchor": "本批集中准备",
+          "behavior": "核完整源序/必要资产/比例/镜头，未知集中处理，仅阻塞实际受影响格和真实依赖。",
+          "decision": "mixed",
+          "workbench_evidence": [
+            {
+              "path": "backend/image_dependencies.py"
+            },
+            {
+              "path": "backend/delivery_readiness.py"
+            },
+            {
+              "path": "resources/comic-skills/references/final-input-semantics.md"
+            }
+          ],
+          "remaining": "readiness只核已建源格与图/QA，不是旧全话准备A门禁。"
+        }
+      ],
+      "limits": [
+        "不新增全书审核、目录扫描或办公软件自动化；缺依据仍未知。"
+      ],
+      "program_equivalence_verified": false
+    },
+    {
+      "source": "vertical-comic-preproduction/references/stage-prompt-package.md",
+      "source_sha256": "9e066b589c17cf267f7d841a5ba4e24e46f2cd07942e856ef87c2d2f60def338",
+      "disposition": "mixed",
+      "summary": "具体画面内容与最终prompt去冲突语义保留；旧B编译器、合并批准和全话语义门禁未全迁。",
+      "clauses": [
+        {
+          "source_anchor": "画面内容锁定",
+          "behavior": "明确每人位置、身体/视线/动作、可见区域、固定物件与遮挡，不仅列参考文件。",
+          "decision": "semantic_retained",
+          "workbench_evidence": [
+            {
+              "path": "resources/comic-skills/references/prompt-package.md"
+            },
+            {
+              "path": "resources/comic-skills/references/final-input-semantics.md"
+            },
+            {
+              "path": "resources/comic-skills/references/reference-continuity.md"
+            }
+          ]
+        },
+        {
+          "source_anchor": "候选包交审前逐格比对",
+          "behavior": "对照原源/获批B/真实prompt参考，去除矛盾裁切；机器字段一致不证明可实现。",
+          "decision": "host_replaced",
+          "workbench_evidence": [
+            {
+              "path": "backend/production_text.py"
+            },
+            {
+              "path": "backend/workflow.py"
+            },
+            {
+              "path": "backend/panel_image_inputs.py"
+            }
+          ],
+          "remaining": "只有现有包候选/采用/预览，无旧semantic_template/framing_feasibility或B审批编译器。"
+        },
+        {
+          "source_anchor": "只在隔离实验目录试验未集成的来源",
+          "behavior": "背景两阶段实验不能自动批准资产或更改冻结生产。",
+          "decision": "semantic_retained",
+          "workbench_evidence": [
+            {
+              "path": "resources/comic-skills/workbench.md"
+            },
+            {
+              "path": "backend/image_jobs.py"
+            },
+            {
+              "path": "resources/comic-skills/references/control-guidance.md"
+            }
+          ]
+        }
+      ],
+      "limits": [
+        "不自动执行构图/空景实验；不把代表格接口验证当全话已通过。"
+      ],
+      "program_equivalence_verified": false
+    },
+    {
+      "source": "vertical-comic-preproduction/references/task-origin.md",
+      "source_sha256": "858386ff284a3966942db58f7eda5742ed56daf4fdd7b200960a4788c972389a",
+      "disposition": "mixed",
+      "summary": "任务来源和有限继承语义保留；task_context来源文件及原交接账本不能由现有版本库冒充。",
+      "clauses": [
+        {
+          "source_anchor": "同书同话、相同脚本、已有旧图或新建RV均不能自行决定是否续做。",
+          "behavior": "fresh不追其他任务历史，reuse仅明确成果，恢复保留原attempt/UNKNOWN/预算。",
+          "decision": "semantic_retained",
+          "workbench_evidence": [
+            {
+              "path": "resources/comic-skills/references/quality-gates.md"
+            },
+            {
+              "path": "resources/comic-skills/references/final-input-semantics.md"
+            },
+            {
+              "path": "backend/production_resume.py"
+            },
+            {
+              "path": "resources/comic-skills/entries/comic-preproduction.md"
+            },
+            {
+              "path": "backend/tests/test_comic_pi5_rules.py",
+              "test": "test_pi5_retains_explicit_conflict_and_task_origin_boundaries"
+            }
+          ],
+          "remaining": "pi.5已明确fresh/reuse_selected/恢复的语义边界；未实现旧task_context书级来源/选择继承协议，不作旧格式兼容或自动清理UNKNOWN声明。"
+        },
+        {
+          "source_anchor": "空数组不是零调用证据",
+          "behavior": "核本任务真实attempt/dispatch receipts，资产与正文调用分别记，当前UNKNOWN/删除历史仍HOLD。",
+          "decision": "mixed",
+          "workbench_evidence": [
+            {
+              "path": "backend/image_provider.py"
+            },
+            {
+              "path": "backend/image_attempts.py"
+            },
+            {
+              "path": "backend/delivery_readiness.py"
+            }
+          ],
+          "remaining": "当前调用账本不实现旧task_context/imports/来源JSON/handoff_zip对账合同。"
+        }
+      ],
+      "limits": [
+        "不以新建任务清除另一原任务未知；不补造旧身份或重签证据。"
+      ],
+      "program_equivalence_verified": false
+    },
+    {
+      "source": "vertical-comic-preproduction/scripts/authority_updates.py",
+      "source_sha256": "769c14ec6f7d67ab9b349a6a4f174073d32a94f0d88344563e797b98e91f00f9",
+      "disposition": "mixed",
+      "summary": "当前review/采用复核承接撤权不可绕过意图，旧proof墓碑和跨文件锁CAS未迁。",
+      "clauses": [
+        {
+          "source_anchor": "def revocation_errors(proof, book, episode):",
+          "behavior": "原proof撤销后嵌入副本/放回索引也不能恢复新派发权限。",
+          "decision": "host_replaced",
+          "workbench_evidence": [
+            {
+              "path": "backend/production_references.py"
+            },
+            {
+              "path": "backend/panel_image_inputs.py"
+            },
+            {
+              "path": "backend/tests/test_production_reference_state.py"
+            }
+          ],
+          "remaining": "宿主核当前参考审核/采用状态，无外部proof_signature墓碑和批准文件认证。"
+        },
+        {
+          "source_anchor": "def update_approvals(state_path, expected_state_sha256,",
+          "behavior": "同话准确proof/phase/格范围在state/control锁和expected hash下登记/撤销，递增authority_revision。",
+          "decision": "legacy_mechanism_not_ported",
+          "workbench_evidence": [
+            {
+              "path": "backend/store.py"
+            },
+            {
+              "path": "backend/workflow.py"
+            },
+            {
+              "path": "resources/comic-skills/workbench.md"
+            }
+          ],
+          "remaining": "SQLite事务不是原双文件锁/authority_policy升级算法，不新增旧字段。"
+        }
+      ],
+      "limits": [
+        "未执行原脚本；当前状态守卫不证明跨话原子授权更新或旧批准真伪验证。"
+      ],
+      "program_equivalence_verified": false
+    },
+    {
+      "source": "vertical-comic-preproduction/scripts/codex_reference_contract.py",
+      "source_sha256": "694803f3e4b3725b49e249a311545f16647a4d02b973d58b205674f58a96b2d4",
+      "disposition": "mixed",
+      "summary": "实际参考字节/顺序由宿主校验；完整文件系统读事务缓存和Codex调用计划协议未迁。",
+      "clauses": [
+        {
+          "source_anchor": "def _validate_panel(panel: dict[str, Any], root: Path",
+          "behavior": "核包内path/sha、五参考、prompt.txt一致及构图review，产本地工具计划但不生图/批准。",
+          "decision": "host_replaced",
+          "workbench_evidence": [
+            {
+              "path": "backend/panel_image_inputs.py"
+            },
+            {
+              "path": "backend/image_provider.py"
+            },
+            {
+              "path": "resources/comic-skills/references/reference-budget.md"
+            }
+          ],
+          "remaining": "宿主file_id/sha/HTTP multipart替代本地参数；旧五槽与构图字段确定性校验未全接。"
+        },
+        {
+          "source_anchor": "def verify_exported_read_set(proof, allowed_roots):",
+          "behavior": "重放正负路径、目录过滤、符号链接目标与文件hash，缓存不授执行许可。",
+          "decision": "legacy_mechanism_not_ported",
+          "workbench_evidence": [
+            {
+              "path": "backend/agent_tools.py"
+            },
+            {
+              "path": "backend/store.py"
+            },
+            {
+              "path": "resources/comic-skills/references/final-input-semantics.md"
+            }
+          ],
+          "remaining": "受控冻结版本不等价于任意文件系统negative observations/read_set导出和重验。"
+        },
+        {
+          "source_anchor": "def execution_errors(execution: dict[str, Any], submission: dict[str, Any],",
+          "behavior": "实际请求与返回准确关联，改输入后旧execution只留历史。",
+          "decision": "host_replaced",
+          "workbench_evidence": [
+            {
+              "path": "backend/image_provider.py"
+            },
+            {
+              "path": "backend/image_jobs.py"
+            },
+            {
+              "path": "backend/image_attempts.py"
+            }
+          ]
+        }
+      ],
+      "limits": [
+        "不新增个人目录/通用文件工具，不声称原透明缓存性能或Codex宿主等价。"
+      ],
+      "program_equivalence_verified": false
+    },
+    {
+      "source": "vertical-comic-preproduction/scripts/context_rebind.py",
+      "source_sha256": "0e97f9833ce69bf9becfb192e2a4720820c32adc238c6723e3308834f3677544",
+      "disposition": "legacy_mechanism_not_ported",
+      "summary": "原等价地址改绑仅适用于未登记/预留准确格，plan/apply/status接口未迁。",
+      "clauses": [
+        {
+          "source_anchor": "def _pending(state,row,packet):",
+          "behavior": "已预留/提交/历史格保留原绑定，不允许改上下文重置调用和预算。",
+          "decision": "semantic_retained",
+          "workbench_evidence": [
+            {
+              "path": "backend/image_jobs.py"
+            },
+            {
+              "path": "backend/image_provider.py"
+            },
+            {
+              "path": "backend/image_attempts.py"
+            }
+          ],
+          "remaining": "当前幂等键/输入hash守卫不是旧pending协议。"
+        },
+        {
+          "source_anchor": "def apply(state_path,expected_plan):",
+          "behavior": "核plan/state hash、实际prompt/上下文等价和原批准/依赖，锁内CAS落receipt，仍无派发授权。",
+          "decision": "legacy_mechanism_not_ported",
+          "workbench_evidence": [
+            {
+              "path": "resources/comic-skills/workbench.md"
+            },
+            {
+              "path": "resources/comic-skills/references/final-input-semantics.md"
+            },
+            {
+              "path": "backend/image_jobs.py"
+            }
+          ],
+          "remaining": "无equivalent_context_rebind_v1；真实输入变化须新候选/预览，不据地址变化自动重签。"
+        }
+      ],
+      "limits": [
+        "不热修旧包或另造context账本；原程序并发/等价证明未迁。"
+      ],
+      "program_equivalence_verified": false
+    },
+    {
+      "source": "vertical-comic-preproduction/scripts/dispatch_publication.py",
+      "source_sha256": "83a01fe6ff1c3ff3f7a8bc586ee62d469d445913156d0b050901a60e3a09988a",
+      "disposition": "legacy_mechanism_not_ported",
+      "summary": "旧内容寻址候选发布/head CAS未实现；候选非批准原则由现有版本记录承接。",
+      "clauses": [
+        {
+          "source_anchor": "def publish(root, scope, files):",
+          "behavior": "只收bytes，内容hash命名并验证完整成员集合，候选发布不证明依赖覆盖/生产资格。",
+          "decision": "host_replaced",
+          "workbench_evidence": [
+            {
+              "path": "backend/store.py"
+            },
+            {
+              "path": "backend/workflow.py"
+            },
+            {
+              "path": "resources/comic-skills/workbench.md"
+            }
+          ],
+          "remaining": "宿主追加版本/候选但无该候选文件树发布器，不导入旧manifest。"
+        },
+        {
+          "source_anchor": "def switch_candidate(root, scope, version, expected_head_sha256):",
+          "behavior": "publication锁内CAS head，同版本切换也增revision防ABA。",
+          "decision": "legacy_mechanism_not_ported",
+          "workbench_evidence": [
+            {
+              "path": "backend/store.py"
+            },
+            {
+              "path": "resources/comic-skills/workbench.md"
+            }
+          ],
+          "remaining": "expected_version不等于旧candidate.json token和跨文件ABA保护；无production_enabled许可。"
+        }
+      ],
+      "limits": [
+        "不启用dispatch_consistency未来协议，不把发布计划当真实生图。"
+      ],
+      "program_equivalence_verified": false
+    },
+    {
+      "source": "vertical-comic-preproduction/scripts/execution_contract.py",
+      "source_sha256": "aee91466a7e0be2c10750e99c22e128c46e5555c2b26705ec53ddcc083de3628",
+      "disposition": "mixed",
+      "summary": "身份/参考/每人动作/空间/规则/冲突的审阅语义保留，完整旧执行器与审计表未迁。",
+      "clauses": [
+        {
+          "source_anchor": "CHECKS=('identity_resolution'",
+          "behavior": "六项语义审计与技术校验分开，模板不是实际审查或批准。",
+          "decision": "semantic_retained",
+          "workbench_evidence": [
+            {
+              "path": "resources/comic-skills/references/final-input-semantics.md"
+            },
+            {
+              "path": "resources/comic-skills/references/quality-gates.md"
+            },
+            {
+              "path": "resources/comic-skills/references/identity-confirmation.md"
+            }
+          ],
+          "remaining": "当前无原六项逐格PASS表及其确定性门禁。"
+        },
+        {
+          "source_anchor": "def state_errors(state,root):",
+          "behavior": "拒未知/混用policy，核快照实际脚本/toolchain、源编号和全话准备策略组合。",
+          "decision": "mixed",
+          "workbench_evidence": [
+            {
+              "path": "backend/skills.py"
+            },
+            {
+              "path": "backend/agent_tools.py"
+            },
+            {
+              "path": "backend/production_text.py"
+            },
+            {
+              "path": "resources/comic-skills/workbench.md"
+            }
+          ],
+          "remaining": "宿主只核自身资源hash/版本/schema，不加载旧toolchain或整套准备合同。"
+        },
+        {
+          "source_anchor": "def semantic_errors(state,root,batch,blocked=()):",
+          "behavior": "核书话/源序/输入版本和真实审阅证据，缺格乱序保持HOLD。",
+          "decision": "needs_implementation",
+          "workbench_evidence": [
+            {
+              "path": "backend/delivery_readiness.py"
+            },
+            {
+              "path": "backend/vision_reviews.py"
+            },
+            {
+              "path": "resources/comic-skills/workbench.md"
+            }
+          ],
+          "remaining": "readiness不实现A/B准备语义审计，不能自动判自然语言/视觉真伪。"
+        }
+      ],
+      "limits": [
+        "不把纯字段通过当全话可交付；原校验器未注册执行。"
+      ],
+      "program_equivalence_verified": false
+    },
+    {
+      "source": "vertical-comic-preproduction/scripts/image_return_io.py",
+      "source_sha256": "6053264af94df2e66f42811bee298b6f1ea5fbd1d2b8d9009301975b3ee892a1",
+      "disposition": "mixed",
+      "summary": "当前单图回执/图片持久化部分承接返回保存职责；先解析验图后存受支持回执，非旧raw-first或不可变冲突拒覆盖合同。",
+      "clauses": [
+        {
+          "source_anchor": "def persist(raw_path, destination, *, selected_index=None):",
+          "behavior": "先raw后识别/去重图像字节/MIME；多图明确选index，坏返回保留证据而不重发。",
+          "decision": "mixed",
+          "workbench_evidence": [
+            {
+              "path": "backend/image_provider.py"
+            },
+            {
+              "path": "backend/tests/test_image_provider.py"
+            }
+          ],
+          "remaining": "当前固定n=1，先JSON解析/脱敏及图像格式核对再保存回执；坏返回只留安全未知状态/诊断，不保留旧工具raw-first副本，也不支持任意嵌套路径/多图selected_index。"
+        },
+        {
+          "source_anchor": "def put(path, data):",
+          "behavior": "不可变发布，仅相同bytes可复用；哈希冲突保留原件。",
+          "decision": "mixed",
+          "workbench_evidence": [
+            {
+              "path": "backend/image_provider.py"
+            },
+            {
+              "path": "backend/store.py"
+            }
+          ],
+          "remaining": "当前唯一call/file ID、幂等状态与原子os.replace写入，不实现旧put的existing-bytes冲突拒覆盖；不能以Store版本不可变推定底层文件函数等价。"
+        }
+      ],
+      "limits": [
+        "不解释未知本地路径或补下载；真实供应商质量及全部响应格式未实测。",
+        "原Pi计划要求在业务版本登记前保存受支持的返回和图片；不从旧raw-first/通用目录发布合同推定新增兼容子系统，也不声称现有实现等价。"
+      ],
+      "program_equivalence_verified": false
+    },
+    {
+      "source": "vertical-comic-preproduction/scripts/immutable_inputs.py",
+      "source_sha256": "d245476b751461fa7fac702146feb6ad5f175096f9d4a4f828337264756d6740",
+      "disposition": "legacy_mechanism_not_ported",
+      "summary": "正负观察不可变文件读集和安全replay未迁，项目固定版本不等价于透明文件系统快照。",
+      "clauses": [
+        {
+          "source_anchor": "def capture(state_path, store, *, check=",
+          "behavior": "捕获观察字节、精确查询/缺失分支/目录过滤，重新核读后发布不可变读集。",
+          "decision": "legacy_mechanism_not_ported",
+          "workbench_evidence": [
+            {
+              "path": "backend/agent_tools.py"
+            },
+            {
+              "path": "backend/store.py"
+            },
+            {
+              "path": "resources/comic-skills/references/final-input-semantics.md"
+            }
+          ],
+          "remaining": "没有sys audit hook/ReadView/负查询回放；不增加任意文件权限。"
+        },
+        {
+          "source_anchor": "def bind(ref, expected_state_sha256",
+          "behavior": "真实state/control锁下绑定已审candidate head，owner写使其过期；head存在不授派发许可。",
+          "decision": "legacy_mechanism_not_ported",
+          "workbench_evidence": [
+            {
+              "path": "backend/image_jobs.py"
+            },
+            {
+              "path": "resources/comic-skills/workbench.md"
+            }
+          ],
+          "remaining": "不迁双锁head sidecar，宿主预览不宣称完整旧immutable_read_set证明。"
+        }
+      ],
+      "limits": [
+        "不安装I/O拦截；没有原算法或性能等价测试，不因规则迁移要求新增全文件系统工具。"
+      ],
+      "program_equivalence_verified": false
+    },
+    {
+      "source": "vertical-comic-preproduction/scripts/init_preproduction.py",
+      "source_sha256": "8c4aba36513a612adb61f311e44e97a574a95ff8d23bf35bd2ccdf1df32d16aa",
+      "disposition": "mixed",
+      "summary": "初始化仅候选、已有运行不覆盖的意图保留，旧八目录/状态模板/默认policy不进入工作台。",
+      "clauses": [
+        {
+          "source_anchor": "\"00_输入审计\"",
+          "behavior": "创建审计、候选镜头/资产/站位/B包、逐格图片、验收、记忆目录和未批准状态。",
+          "decision": "host_replaced",
+          "workbench_evidence": [
+            {
+              "path": "backend/store.py"
+            },
+            {
+              "path": "backend/workflow.py"
+            },
+            {
+              "path": "backend/production_text.py"
+            }
+          ],
+          "remaining": "宿主SQLite记录替代目录，不创建CAMERA/phase模板或全部旧默认策略。"
+        },
+        {
+          "source_anchor": "def write_if_missing(path: Path, value: object)",
+          "behavior": "已有文件不覆盖，旧来源/预算不靠初始化热改或补成批准。",
+          "decision": "semantic_retained",
+          "workbench_evidence": [
+            {
+              "path": "backend/store.py"
+            },
+            {
+              "path": "backend/skills.py"
+            },
+            {
+              "path": "backend/production_resume.py"
+            }
+          ],
+          "remaining": "新独立任务不等于原init/task_context兼容；身份归属需明确。"
+        }
+      ],
+      "limits": [
+        "项目初始化不证明输入审计/审批完成；旧脚本未运行。"
+      ],
+      "program_equivalence_verified": false
+    },
+    {
+      "source": "vertical-comic-preproduction/scripts/input_dependencies.py",
+      "source_sha256": "3198c765f141c0126c2ffb50b38839c523eadc6a1651bc137825b627b4764aa7",
+      "disposition": "mixed",
+      "summary": "显式引用不等于正文路径，真实依赖边原则保留；传递JSON/目录/缺失文件指纹优化未迁。",
+      "clauses": [
+        {
+          "source_anchor": "def references(value):",
+          "behavior": "只认显式文件引用，普通正文不是文件查询或权限。",
+          "decision": "semantic_retained",
+          "workbench_evidence": [
+            {
+              "path": "backend/agent_tools.py"
+            },
+            {
+              "path": "backend/image_dependencies.py"
+            },
+            {
+              "path": "resources/comic-skills/workbench.md"
+            }
+          ]
+        },
+        {
+          "source_anchor": "def capture(value, root, queries=(), memo=None):",
+          "behavior": "捕获传递JSON、负文件/目录观察，recheck后affected算保守依赖闭包。",
+          "decision": "legacy_mechanism_not_ported",
+          "workbench_evidence": [
+            {
+              "path": "backend/image_dependencies.py"
+            },
+            {
+              "path": "resources/comic-skills/references/final-input-semantics.md"
+            }
+          ],
+          "remaining": "仅显式record/version前图DAG，不扫描任意目录/JSON、不推邻接权限或自动重编闭包。"
+        }
+      ],
+      "limits": [
+        "普通连续性比较不变硬像素依赖；影响分析与缓存不授新生成权限。"
+      ],
+      "program_equivalence_verified": false
+    },
+    {
+      "source": "vertical-comic-preproduction/scripts/input_priority.py",
+      "source_sha256": "2464fa7749bd46bd3f9b780375398d6fd43da2c7154f94d2dd11be3d53f190ce",
+      "disposition": "mixed",
+      "summary": "物理/场景/剧情/画风同时成立规则保留，旧visual_resolution字段门禁未实现。",
+      "clauses": [
+        {
+          "source_anchor": "物理与场景约束",
+          "behavior": "不造家具、扭曲人体、解除遮挡或改剧情，冲突仅用有据获批的本格视觉适配。",
+          "decision": "semantic_retained",
+          "workbench_evidence": [
+            {
+              "path": "resources/comic-skills/workbench.md"
+            },
+            {
+              "path": "resources/comic-skills/rules/MEM-006.md"
+            },
+            {
+              "path": "resources/comic-skills/rules/MEM-003.md"
+            }
+          ]
+        },
+        {
+          "source_anchor": "def resolution_errors(value: Any)",
+          "behavior": "只有APPROVED且issue/场景依据/批准方案/批准证据完整可进入执行文本。",
+          "decision": "legacy_mechanism_not_ported",
+          "workbench_evidence": [
+            {
+              "path": "resources/comic-skills/references/prompt-package.md"
+            },
+            {
+              "path": "backend/production_text.py"
+            },
+            {
+              "path": "backend/workflow.py"
+            }
+          ],
+          "remaining": "宿主候选/采用承接批准边界，无旧visual_resolution schema或真实性自动检测。"
+        }
+      ],
+      "limits": [
+        "不要求模型虚构未支持字段，不以自然语言已批准替代用户批准证据。"
+      ],
+      "program_equivalence_verified": false
+    },
+    {
+      "source": "vertical-comic-preproduction/scripts/input_quality.py",
+      "source_sha256": "7a72a313197195f99b55e085aaf4f44de122e99a7bcd61850a7845485d744427",
+      "disposition": "mixed",
+      "summary": "动作/锚点/实际参考与返修范围判断语义保留，旧输入质量检查器和完整返修决定schema未全实现。",
+      "clauses": [
+        {
+          "source_anchor": "def errors(panel,context=None):",
+          "behavior": "核当前可见人物状态、必要动作/空间与实际参考的可执行输入。",
+          "decision": "semantic_retained",
+          "workbench_evidence": [
+            {
+              "path": "resources/comic-skills/references/final-input-semantics.md"
+            },
+            {
+              "path": "resources/comic-skills/references/prompt-package.md"
+            },
+            {
+              "path": "resources/comic-skills/references/identity-confirmation.md"
+            }
+          ],
+          "remaining": "文本资料不证明errors/scene_reference_errors确定性程序接通。"
+        },
+        {
+          "source_anchor": "def repair_decision_errors(decision,record,",
+          "behavior": "真实缺陷/底图/批准目标与保留范围应匹配，局部问题不扩大为未授权重画。",
+          "decision": "mixed",
+          "workbench_evidence": [
+            {
+              "path": "resources/comic-skills/references/production-decisions.md"
+            },
+            {
+              "path": "backend/image_postprocess.py"
+            },
+            {
+              "path": "backend/vision_reviews.py"
+            }
+          ],
+          "remaining": "当前仅固定批次严重剧情一轮；高级批注讨论修图、区域保护guard和完整repair_decision仍缺。"
+        }
+      ],
+      "limits": [
+        "不增加图像调用，不自动通过底图质量；未知依据保持未核实。"
+      ],
+      "program_equivalence_verified": false
+    },
+    {
+      "source": "vertical-comic-preproduction/scripts/input_semantics.py",
+      "source_sha256": "8377c8247ae4066e5742a879d100295d3a68a0d51d1a56d5f5cc5984ba654273",
+      "disposition": "mixed",
+      "summary": "原文当前瞬间/人物可见性/全prompt去冲突语义已迁，prepared v2语义指纹/复用审核未迁。",
+      "clauses": [
+        {
+          "source_anchor": "def conflict_errors(shot, prompt,",
+          "behavior": "仅明确归属人物/瞬间的状态可阻断；睁眼/失焦/口形不能靠关键词猜否定或先后。",
+          "decision": "semantic_retained",
+          "workbench_evidence": [
+            {
+              "path": "resources/comic-skills/references/final-input-semantics.md"
+            },
+            {
+              "path": "resources/comic-skills/references/prompt-package.md"
+            }
+          ],
+          "remaining": "宿主仍需阅读准确正文，未接源正则/冲突算法为确定性API。"
+        },
+        {
+          "source_anchor": "def preparation_basis(state, root, shot, panel, prompt):",
+          "behavior": "把原源/镜头/资产/真实prompt参考/观察目标给审阅者，不自动批准。",
+          "decision": "host_replaced",
+          "workbench_evidence": [
+            {
+              "path": "backend/panel_image_inputs.py"
+            },
+            {
+              "path": "backend/vision_reviews.py"
+            },
+            {
+              "path": "backend/agent_tools.py"
+            }
+          ],
+          "remaining": "固定上下文/像素输入只有限替代，无完整preparation_basis/semantic_input_digest。"
+        },
+        {
+          "source_anchor": "def coverage(state, root, dependency_plan=None,",
+          "behavior": "核源格与真实依赖的final_input_semantics检查覆盖/内容指纹。",
+          "decision": "needs_implementation",
+          "workbench_evidence": [
+            {
+              "path": "backend/delivery_readiness.py"
+            },
+            {
+              "path": "backend/image_dependencies.py"
+            },
+            {
+              "path": "resources/comic-skills/workbench.md"
+            }
+          ],
+          "remaining": "没有旧review_checks/coverage/prepared审核缓存；数据库ready不等于语义覆盖。"
+        }
+      ],
+      "limits": [
+        "不能修改诊断文字就重签输入/批准；不自动判自然语言或视觉正确。"
+      ],
+      "program_equivalence_verified": false
+    },
+    {
+      "source": "vertical-comic-preproduction/scripts/panel_derivation.py",
+      "source_sha256": "2e33748ad05c3887f8482850d593707cc39f3141c03aee42e69ad33c70519e14",
+      "disposition": "mixed",
+      "summary": "变更回权威主稿/实际依赖和复用需核hash的规则保留，旧增量派生器未实现。",
+      "clauses": [
+        {
+          "source_anchor": "def render(source,row,panel,header,previous,following):",
+          "behavior": "从主表/共享库/真实前后文编译镜头、内容、身份、画风执行块，不手改派生文件当源。",
+          "decision": "semantic_retained",
+          "workbench_evidence": [
+            {
+              "path": "resources/comic-skills/references/prompt-package.md"
+            },
+            {
+              "path": "backend/production_text.py"
+            },
+            {
+              "path": "backend/workflow.py"
+            }
+          ],
+          "remaining": "模型产分段包候选，不是源render/build_prompt确定性编译器。"
+        },
+        {
+          "source_anchor": "def derive(source_path,output,previous=None):",
+          "behavior": "比较字段/文件/工具依赖，未变格核原hash复用，变化输出新prompt/manifest/镜头/展示/receipt。",
+          "decision": "legacy_mechanism_not_ported",
+          "workbench_evidence": [
+            {
+              "path": "resources/comic-skills/references/final-input-semantics.md"
+            },
+            {
+              "path": "backend/store.py"
+            },
+            {
+              "path": "resources/comic-skills/workbench.md"
+            }
+          ],
+          "remaining": "没有自动derive目录、共享对象重编、工具指纹/receipt选择；过期版本需新候选。"
+        }
+      ],
+      "limits": [
+        "mtime候选或cache_reused不等于批准，产物/性能等价未证明。"
+      ],
+      "program_equivalence_verified": false
+    },
+    {
+      "source": "vertical-comic-preproduction/scripts/panel_source.py",
+      "source_sha256": "df94cbd1b7cabcdd595a5f5451c0c52eaae6d64875d5cb5f4d4682afa57f8072",
+      "disposition": "mixed",
+      "summary": "主稿与派生职责分离、导入非批准保留，旧主表/旧state导入未搬。",
+      "clauses": [
+        {
+          "source_anchor": "def import_state(state_path):",
+          "behavior": "输出WORKING_DRAFT；拒将有输出/在途/未知记录复制为新任务，字段冲突先解。",
+          "decision": "semantic_retained",
+          "workbench_evidence": [
+            {
+              "path": "resources/comic-skills/references/final-input-semantics.md"
+            },
+            {
+              "path": "backend/image_provider.py"
+            },
+            {
+              "path": "backend/workflow.py"
+            }
+          ],
+          "remaining": "不从旧state自动导入主表，独立重做与恢复归属须另明确。"
+        },
+        {
+          "source_anchor": "def validate(value):",
+          "behavior": "原文/shot/execution分工、共享引用和新文件不覆盖，user_approval不授予。",
+          "decision": "host_replaced",
+          "workbench_evidence": [
+            {
+              "path": "backend/production_text.py"
+            },
+            {
+              "path": "backend/store.py"
+            },
+            {
+              "path": "backend/workflow.py"
+            }
+          ],
+          "remaining": "当前严格schema/候选版本是有限替代，无shared_ref展开和normalize_refs本地路径协议。"
+        }
+      ],
+      "limits": [
+        "不另建平行主表/通用文件解析权限，原导入工具未执行。"
+      ],
+      "program_equivalence_verified": false
+    },
+    {
+      "source": "vertical-comic-preproduction/scripts/prepared_job_store.py",
+      "source_sha256": "216337306d83c0830998b43bf4dc79882eb0e9a2561e085b9865c45b1cf893a9",
+      "disposition": "legacy_mechanism_not_ported",
+      "summary": "这是旧离线逐格准备/持久读集/进程池编译与提交复核系统，当前预览不能宣称已迁。",
+      "clauses": [
+        {
+          "source_anchor": "def _prepare_panel(pid):",
+          "behavior": "隔离进程用同批固定快照算输入/读集，不写state不调服务，资源不足降编译worker。",
+          "decision": "legacy_mechanism_not_ported",
+          "workbench_evidence": [
+            {
+              "path": "resources/comic-skills/workbench.md"
+            },
+            {
+              "path": "backend/capacity.py"
+            },
+            {
+              "path": "resources/comic-skills/references/final-input-semantics.md"
+            }
+          ],
+          "remaining": "不创建ProcessPool或all编译worker/机器资源预算；宿主模型池作用域不同。"
+        },
+        {
+          "source_anchor": "def get(self,reference,state=None, *, check_inputs=True, check_state=True):",
+          "behavior": "核prepared ID/digest、文件/目录读集、attempt/round/包、现有批准及前图实际输出。",
+          "decision": "mixed",
+          "workbench_evidence": [
+            {
+              "path": "backend/image_jobs.py"
+            },
+            {
+              "path": "backend/image_dependencies.py"
+            },
+            {
+              "path": "backend/panel_image_inputs.py"
+            }
+          ],
+          "remaining": "固定预览/提交前复核仅承接安全意图，无prepared记录/negative读集/scoped refresh。"
+        },
+        {
+          "source_anchor": "def rebind_retry(self,reference,state):",
+          "behavior": "仅确认未发出且语义等价时沿原attempt重绑，不能换源/根目录/补缺证据。",
+          "decision": "legacy_mechanism_not_ported",
+          "workbench_evidence": [
+            {
+              "path": "backend/image_attempts.py"
+            },
+            {
+              "path": "backend/image_provider.py"
+            }
+          ],
+          "remaining": "当前有限网络重试独立记账，不是prepared文件复用算法。"
+        }
+      ],
+      "limits": [
+        "原源未注册执行，缓存/并行性能或claim-and-register等价未证明。"
+      ],
+      "program_equivalence_verified": false
+    },
+    {
+      "source": "vertical-comic-preproduction/scripts/prepared_scope.py",
+      "source_sha256": "5de2c8b597ba6212dd3547ca475ba0fc6fcca0edbe898f0ac3e50e877f1eac08",
+      "disposition": "legacy_mechanism_not_ported",
+      "summary": "原scoped投影排除解释性prose而保守保留未知头，语义投影缓存未迁。",
+      "clauses": [
+        {
+          "source_anchor": "def audit_decisions(row):",
+          "behavior": "只有解释文字不改verdict/issues/输入身份；不借注释变化重签判断。",
+          "decision": "legacy_mechanism_not_ported",
+          "workbench_evidence": [
+            {
+              "path": "backend/store.py"
+            },
+            {
+              "path": "resources/comic-skills/references/final-input-semantics.md"
+            }
+          ],
+          "remaining": "当前保存即新版本，没有prose不影响语义的自动证明或旧QA复用。"
+        },
+        {
+          "source_anchor": "def refresh(state, root, value):",
+          "behavior": "仅scoped内容不变可刷新，仍核当前A/B/包批准/撤销及真实generation_dependencies。",
+          "decision": "mixed",
+          "workbench_evidence": [
+            {
+              "path": "backend/image_dependencies.py"
+            },
+            {
+              "path": "backend/production_references.py"
+            }
+          ],
+          "remaining": "当前审核/采用/显式依赖守卫保留，无scope v2头/集合hash/批准范围算法。"
+        }
+      ],
+      "limits": [
+        "不得用只是注释跳版本守卫；未知字段不推测安全。"
+      ],
+      "program_equivalence_verified": false
+    },
+    {
+      "source": "vertical-comic-preproduction/scripts/production_evidence.py",
+      "source_sha256": "565119807873cf5f3cebd3b3cdb04a62ed2449adec388fca49d6199ade1edd90",
+      "disposition": "mixed",
+      "summary": "精确attempt/输出/QA及真实前图像素绑定保留；旧跨话/全话深审不恢复为默认。",
+      "clauses": [
+        {
+          "source_anchor": "def attempt_errors(state, root, item):",
+          "behavior": "原格/attempt/round、实际output hash与QA manifest/调用证据一致，未完成不记PASS。",
+          "decision": "host_replaced",
+          "workbench_evidence": [
+            {
+              "path": "backend/image_provider.py"
+            },
+            {
+              "path": "backend/vision_reviews.py"
+            },
+            {
+              "path": "backend/delivery_readiness.py"
+            }
+          ],
+          "remaining": "当前call/job/报告版本只替代部分；无旧全部QA维度/源映射验收器。"
+        },
+        {
+          "source_anchor": "def dependency_basis(root, package_path, packet, shot, basis, records, state=None):",
+          "behavior": "前图通过准确采用审核后真实带入参考，仅动作/空间连续性，不替身份衣装画风。",
+          "decision": "host_replaced",
+          "workbench_evidence": [
+            {
+              "path": "backend/image_dependencies.py"
+            },
+            {
+              "path": "backend/tests/test_image_dependencies.py"
+            }
+          ],
+          "remaining": "现有DAG不导入旧dependency_outputs/control文件。"
+        },
+        {
+          "source_anchor": "def cross_episode_errors(context, *, first_batch=False):",
+          "behavior": "旧跨话/批次比较需当前完整输出；contact sheet只是未审辅助，不授PASS。",
+          "decision": "legacy_mechanism_not_ported",
+          "workbench_evidence": [
+            {
+              "path": "resources/comic-skills/references/quality-gates.md"
+            },
+            {
+              "path": "resources/comic-skills/references/light-review.md"
+            },
+            {
+              "path": "backend/delivery_readiness.py"
+            }
+          ],
+          "remaining": "不恢复默认跨话终审/第二遍深审，readiness不是跨话像素比较。"
+        }
+      ],
+      "limits": [
+        "仅按轻剧情观察和命中风险核实；未迁旧程序不因规则文本变可用。"
+      ],
+      "program_equivalence_verified": false
+    },
+    {
+      "source": "vertical-comic-preproduction/scripts/script_catalog.py",
+      "source_sha256": "3589fb25266fd1eb7c85fc8df5eea742291d358915e5ced6dbec56ac7927d5e0",
+      "disposition": "mixed",
+      "summary": "不按最新文件名猜选稿语义保留，外部目录/XLSX盘点/原稿缓存与明确选择接口未实现。",
+      "clauses": [
+        {
+          "source_anchor": "def discover(root, book, episodes, *, cache_root=None):",
+          "behavior": "扫描指定目录、记录hash/工作表格号/版本提示/重复源，返回DISCOVERED_NOT_VERIFIED。",
+          "decision": "needs_implementation",
+          "workbench_evidence": [
+            {
+              "path": "resources/comic-skills/references/costume-handoff.md"
+            },
+            {
+              "path": "backend/agent_tools.py"
+            },
+            {
+              "path": "backend/graph_documents.py"
+            }
+          ],
+          "remaining": "当前固定records不是外部目录盘点器，无raw_workbook_catalog_cache_v4。"
+        },
+        {
+          "source_anchor": "def select(catalog, selections, *, evidence):",
+          "behavior": "准确文件/hash/版本+证据绑定本话，未来话仅参考，读取再核源序不缺不重。",
+          "decision": "semantic_retained",
+          "workbench_evidence": [
+            {
+              "path": "resources/comic-skills/references/costume-handoff.md"
+            },
+            {
+              "path": "resources/comic-skills/references/quality-gates.md"
+            },
+            {
+              "path": "backend/frame_plan.py"
+            }
+          ],
+          "remaining": "不猜选稿原则保留，但无catalog选择表导入和原P号映射链。"
+        }
+      ],
+      "limits": [
+        "固定主稿集合不证明全书改编完整；源存在不授权目录扫描。"
+      ],
+      "program_equivalence_verified": false
+    },
+    {
+      "source": "vertical-comic-preproduction/scripts/source_adapter.py",
+      "source_sha256": "fa1c182bd8854916dd522d66bea6be87a9ec6d0a4dc5e6fd2ac4a0ee6f1f2097",
+      "disposition": "mixed",
+      "summary": "无损保留原源格和原文原则保留，整数panel不是任意旧E/P编号映射能力。",
+      "clauses": [
+        {
+          "source_anchor": "def adapted(source,episode,origin):",
+          "behavior": "只接受可无损映射的本话E前缀/Pxxx，保留对照与locked_scripts，重复/冲突拒绝。",
+          "decision": "semantic_retained",
+          "workbench_evidence": [
+            {
+              "path": "resources/comic-skills/references/quality-gates.md"
+            },
+            {
+              "path": "resources/comic-skills/references/final-input-semantics.md"
+            },
+            {
+              "path": "backend/production_text.py"
+            }
+          ],
+          "remaining": "宿主整数格/脚本ID版本不实现source_id_map_v1；非连续源编号仍有残余。"
+        },
+        {
+          "source_anchor": "def verify(source,root,episode):",
+          "behavior": "重读源快照hash并比对整份派生结构，不能为通过而改格序或原文。",
+          "decision": "needs_implementation",
+          "workbench_evidence": [
+            {
+              "path": "backend/frame_plan.py"
+            },
+            {
+              "path": "backend/delivery_readiness.py"
+            },
+            {
+              "path": "resources/comic-skills/workbench.md"
+            }
+          ],
+          "remaining": "现只核已建主稿集合，无外部源快照→映射→执行格完整链，不能宣称全部原稿已导入。"
+        }
+      ],
+      "limits": [
+        "不偷偷重编号/新增未支持字段；输入仍服从当前schema。"
+      ],
+      "program_equivalence_verified": false
+    },
+    {
+      "source": "vertical-comic-preproduction/scripts/source_input_contract.py",
+      "source_sha256": "1e1f97590598b6bdaf259d60897ca1a721063d0a61104773d012c3acc9d0bb44",
+      "disposition": "legacy_mechanism_not_ported",
+      "summary": "原state输入投影/进度无关刷新优化未迁，工作台固定版本不是透明投影层。",
+      "clauses": [
+        {
+          "source_anchor": "class SourceView(ReadOnlyDict):",
+          "behavior": "只许声明FIELDS，未声明访问拒绝；未知协议/额外头字段退严格全文件。",
+          "decision": "legacy_mechanism_not_ported",
+          "workbench_evidence": [
+            {
+              "path": "backend/agent_tools.py"
+            },
+            {
+              "path": "backend/store.py"
+            },
+            {
+              "path": "resources/comic-skills/workbench.md"
+            }
+          ],
+          "remaining": "当前权限/schema不是FIELDS/PROGRESS投影与stat token缓存。"
+        },
+        {
+          "source_anchor": "def verify(memo,*,refresh):",
+          "behavior": "写锁前后核真实目标/stamp，只有纯进度可刷新，版本变更失败关闭。",
+          "decision": "host_replaced",
+          "workbench_evidence": [
+            {
+              "path": "backend/image_jobs.py"
+            },
+            {
+              "path": "backend/production_references.py"
+            }
+          ],
+          "remaining": "expected_version/冻结引用复核承接冲突关闭，无纯进度等价文件刷新算法。"
+        }
+      ],
+      "limits": [
+        "不安装透明I/O hook，不把SQLite持久化当原缓存性能/正确性实测。"
+      ],
+      "program_equivalence_verified": false
+    },
+    {
+      "source": "vertical-comic-preproduction/scripts/source_workbook.py",
+      "source_sha256": "413f24ae17c1a2057d4d50ed6feec46fe58fad7f8cb8d051e40d60055b84e3e9",
+      "disposition": "mixed",
+      "summary": "无Excel的真实XLSX单元格证据采集尚无等价宿主入口，文档导入不能冒充已覆盖。",
+      "clauses": [
+        {
+          "source_anchor": "def snapshot(path):",
+          "behavior": "openpyxl只读且data_only=False保存工作表/坐标/原文/公式，读取前后源hash必须一致。",
+          "decision": "legacy_mechanism_not_ported",
+          "workbench_evidence": [
+            {
+              "path": "backend/graph_documents.py"
+            },
+            {
+              "path": "backend/agent_tools.py"
+            }
+          ],
+          "remaining": "TXT/DOCX/PDF解析未输出raw_workbook_evidence_v1/公式证据/前后源hash。"
+        },
+        {
+          "source_anchor": "raw_workbook_evidence_v1",
+          "behavior": "只输出原始证据，不推断人物/话格/批准，新输出不覆盖原件。",
+          "decision": "semantic_retained",
+          "workbench_evidence": [
+            {
+              "path": "resources/comic-skills/references/costume-handoff.md"
+            },
+            {
+              "path": "resources/comic-skills/references/quality-gates.md"
+            },
+            {
+              "path": "resources/comic-skills/workbench.md"
+            }
+          ],
+          "remaining": "后续XLSX支持仍须选稿与源格映射，解析成功不等于审计批准。"
+        }
+      ],
+      "limits": [
+        "XLSX单元格/公式证据协议未迁；当前小说导入支持TXT/MD/DOCX/PDF，不能冒称XLSX等价。原Pi计划/当前用户未要求重建旧Excel源格采集工具，后续若明确支持须另行实现与验收。"
+      ],
+      "required_by_current_plan": false,
+      "requirement_basis": "legacy_xlsx_cell_evidence_protocol_not_explicitly_requested_by_current_user_or_pi_plan",
+      "program_equivalence_verified": false
+    },
+    {
+      "source": "vertical-comic-preproduction/scripts/submission_contract.py",
+      "source_sha256": "04b73d057d110fb959c7910925fe53c0f93c92b58c14244d3a49d8ee849e7630",
+      "disposition": "host_replaced",
+      "summary": "准确调用身份、固定输入和登记非观测调用由宿主call/job/attempt事务账本替代，旧prepared协议不导入。",
+      "clauses": [
+        {
+          "source_anchor": "def validate_job(job, actual):",
+          "behavior": "候选/只审禁止派发，核kind/book/episode/job/panel/attempt/round/arguments/submission全绑定。",
+          "decision": "host_replaced",
+          "workbench_evidence": [
+            {
+              "path": "backend/image_jobs.py"
+            },
+            {
+              "path": "backend/image_provider.py"
+            },
+            {
+              "path": "backend/image_attempts.py"
+            }
+          ],
+          "remaining": "现project/operation_key/input_hash不是原job schema，不接受旧许可直接启动。"
+        },
+        {
+          "source_anchor": "def acknowledgement(job, record, *, fresh, state_sha256):",
+          "behavior": "同编号重复登记不授invoke_allowed；observed_tool_call=false不冒充供应商已收。",
+          "decision": "host_replaced",
+          "workbench_evidence": [
+            {
+              "path": "backend/image_attempts.py"
+            },
+            {
+              "path": "backend/image_provider.py"
+            },
+            {
+              "path": "backend/tests/test_image_provider.py"
+            }
+          ],
+          "remaining": "实际HTTP attempt和原返回另记；有限重试沿原逻辑call授权。"
+        },
+        {
+          "source_anchor": "def prepared_panel_job(state, value, receipt):",
+          "behavior": "prepared digest/authority revision/permit写最终job及prepared ack。",
+          "decision": "legacy_mechanism_not_ported",
+          "workbench_evidence": [
+            {
+              "path": "resources/comic-skills/workbench.md"
+            },
+            {
+              "path": "backend/image_jobs.py"
+            }
+          ],
+          "remaining": "没有prepared_panel_job/ack执行器协议，不能因已有登记账本称其完成。"
+        }
+      ],
+      "limits": [
+        "网络重试不重置质量返修轮，未知不得自动重发；真实供应商幂等未实测。"
+      ],
+      "program_equivalence_verified": false
+    },
+    {
+      "source": "vertical-comic-preproduction/scripts/task_context.py",
+      "source_sha256": "2214d0253c5425e0e96826bb3e0db0ab31a363f6dfed909e57693016212d44af",
+      "disposition": "mixed",
+      "summary": "真实任务来源、有限继承和原调用预算必须保留，旧task_context/来源文件/交接历史合同未全实现。",
+      "clauses": [
+        {
+          "source_anchor": "def validate(context):",
+          "behavior": "fresh/reuse需真实请求来源，reuse限定旧task/话/格/证据；恢复/接包不能prepare重建。",
+          "decision": "mixed",
+          "workbench_evidence": [
+            {
+              "path": "resources/comic-skills/references/quality-gates.md"
+            },
+            {
+              "path": "resources/comic-skills/references/final-input-semantics.md"
+            },
+            {
+              "path": "backend/production_resume.py"
+            }
+          ],
+          "remaining": "pi.5另补语义；本审计不认定完整task_scoped_history_v1和独立来源文件已有宿主实现。"
+        },
+        {
+          "source_anchor": "def history_errors(context, episode, state, root, reference,",
+          "behavior": "对照真实attempt/dispatch，空history不证明零调用，未选任务不混入、返修不改记首轮。",
+          "decision": "host_replaced",
+          "workbench_evidence": [
+            {
+              "path": "backend/image_provider.py"
+            },
+            {
+              "path": "backend/image_attempts.py"
+            },
+            {
+              "path": "backend/image_batch_control.py"
+            }
+          ],
+          "remaining": "现真实账本不导入旧imports/handoff history，跨独立任务范围仍需明确归属。"
+        },
+        {
+          "source_anchor": "def preparation_errors(state, root, panel_ids):",
+          "behavior": "前期只读授权绑定真实请求/准确源格，不能作为正文线上派发授权。",
+          "decision": "semantic_retained",
+          "workbench_evidence": [
+            {
+              "path": "backend/production_text.py"
+            },
+            {
+              "path": "backend/image_jobs.py"
+            },
+            {
+              "path": "resources/comic-skills/workbench.md"
+            }
+          ]
+        }
+      ],
+      "limits": [
+        "旧身份缺失不补造、旧运行不热升级；保留mixed而非全源闭合。"
+      ],
+      "program_equivalence_verified": false
+    }
+  ]
+}

@@ -1,0 +1,168 @@
+.package-table-scroll {
+  min-height: 300px;
+  overflow: auto;
+  border: 1px solid var(--line);
+  background: white;
+  position: relative;
+}
+.package-table {
+  border-collapse: separate;
+  border-spacing: 0;
+  min-width: 1900px;
+  width: 100%;
+  font-size: 13px;
+}
+.package-table td,
+.package-table th {
+  vertical-align: top;
+  text-align: left;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--line);
+  border-right: 1px solid var(--line);
+  line-height: 1.6;
+}
+.package-table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 4;
+  background: var(--sidebar);
+  white-space: nowrap;
+  font-size: 12px;
+}
+.package-table tr > :first-child:not([colspan]) {
+  position: sticky;
+  left: 0;
+  min-width: 40px;
+  width: 40px;
+  background: white;
+  z-index: 2;
+  padding: 12px 10px;
+}
+.package-table tr > :nth-child(2) {
+  position: sticky;
+  left: 40px;
+  min-width: 125px;
+  width: 125px;
+  background: white;
+  z-index: 2;
+}
+.package-table thead tr > :first-child,
+.package-table thead tr > :nth-child(2) {
+  z-index: 6;
+  background: var(--sidebar);
+}
+.package-table small {
+  display: block;
+  font-size: 11px;
+  color: var(--muted);
+  font-weight: 400;
+  margin-top: 4px;
+}
+.package-table td {
+  min-width: 180px;
+  max-width: 280px;
+}
+.package-table td:last-child {
+  min-width: 300px;
+}
+.package-table td:nth-child(3) {
+  min-width: 150px;
+}
+.package-table button {
+  font-size: 12px;
+  padding: 5px 8px;
+  margin: 4px 4px 0 0;
+}
+.package-cell-text {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.package-table-scroll.expanded .package-cell-text {
+  display: block;
+}
+.package-episode th {
+  background: var(--accent-soft);
+  font-size: 13px;
+  padding: 8px 12px;
+}
+.package-episode label {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 10px;
+  margin: 0;
+}
+.package-episode span {
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--muted);
+}
+.package-ref {
+  margin-bottom: 8px;
+  max-width: 210px;
+  overflow-wrap: anywhere;
+}
+.package-ref strong {
+  font-size: 12px;
+  font-weight: 500;
+}
+.package-table tr.selected > td,
+.package-table tr.selected > th {
+  background: var(--accent-soft);
+}
+.package-warning {
+  color: var(--error);
+  font-weight: 600;
+}
+.package-range-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.package-range-controls label {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  white-space: nowrap;
+}
+.package-range-controls input {
+  width: 72px !important;
+}
+.package-table-section ~ .drawer-backdrop .package-reader {
+  max-height: none;
+  overflow: visible;
+  padding: 0;
+}
+.production-review:has(.package-table) > .selection-bar {
+  position: sticky;
+  top: 0;
+  z-index: 16;
+}
+.package-detail-nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+@media (max-width: 1280px) {
+  .review-toolbar:has(.package-range-controls) {
+    align-items: flex-start;
+  }
+  .review-toolbar:has(.package-range-controls) > .actions {
+    flex-wrap: wrap;
+  }
+}
+/* Batch review keeps the table, not the page heading, in the main viewport. */
+.production-app:has(.package-table) .batch-bar{padding:8px 10px;margin-bottom:12px}.package-table td,.package-table th{padding:8px 10px}.package-table button{min-height:28px;padding:3px 6px}.package-cell-text{-webkit-line-clamp:2}.package-ref{margin-bottom:4px}.package-table-scroll:not(.expanded) .package-ref strong,.package-table-scroll:not(.expanded) .package-ref small{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.package-table-scroll.expanded .package-ref strong,.package-table-scroll.expanded .package-ref small{white-space:normal}.package-ref strong{max-width:205px}
+
+.package-table tr > :first-child:not([colspan]) { width:44px; min-width:44px; max-width:44px; z-index:5; }
+.package-table tr > :nth-child(2) { left:44px; box-shadow:2px 0 0 var(--line); }
+.package-table thead tr > :first-child, .package-table thead tr > :nth-child(2) { z-index:8; }
+.package-episode label { position:sticky; left:10px; width:fit-content; max-width:calc(100vw - 290px); flex-wrap:wrap; }

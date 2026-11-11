@@ -116,3 +116,47 @@ it('failed conflict refresh keeps local edits and reports the failure',async()=>
  expect(result.current.head.current.version).toBe(1);
  expect(result.current.error).toContain('无法读取');
 });
+it('explicit discard reads latest without a write and clears the conflict and cached draft',async()=>{
+ let puts=0;
+ const fetcher=vi.spyOn(globalThis,'fetch').mockImplementation(async(_url,options)=>{
+  if(options?.method==='PUT'){
+   puts++;if(puts===1)return new Response(JSON.stringify({detail:'版本冲突'}),{status:409});
+   const body=JSON.parse(options.body as string);return new Response(JSON.stringify({...original,version:3,content:body.content}));
+  }
+  return new Response(JSON.stringify({...original,version:2,content:{html:'服务器新内容'}}));
+ });
+ const onSaved=vi.fn(),{result}=renderHook(()=>useDraft(original,onSaved));
+ act(()=>result.current.setContent({html:'冲突草稿'}));
+ await act(async()=>{await result.current.save()});expect(result.current.error).toContain('版本冲突');
+ await act(async()=>{await result.current.discard()});
+ expect(result.current.content.html).toBe('服务器新内容');expect(result.current.dirty).toBe(false);expect(result.current.error).toBe('');
+ expect(localStorage.getItem('comic-draft:project:doc')).toBeNull();expect(puts).toBe(1);
+ act(()=>result.current.setContent({html:'重新编辑'}));await act(async()=>{await result.current.save()});
+ const body=JSON.parse(fetcher.mock.calls.at(-1)![1]!.body as string);expect(body.expected_version).toBe(2);expect(result.current.status).toBe('已保存');
+});
+it('failed discard keeps the draft and original version',async()=>{
+ vi.spyOn(globalThis,'fetch').mockRejectedValue(new TypeError('offline'));
+ const {result}=renderHook(()=>useDraft(original,()=>{}));act(()=>result.current.setContent({html:'不可丢失'}));
+ await act(async()=>{await result.current.discard()});
+ expect(result.current.content.html).toBe('不可丢失');expect(result.current.head.current.version).toBe(1);
+ expect(localStorage.getItem('comic-draft:project:doc')).toContain('不可丢失');expect(result.current.error).toContain('草稿');
+});
+it('editing while discard is loading prevents it from replacing newer local text',async()=>{
+ let finish!:(r:Response)=>void;
+ vi.spyOn(globalThis,'fetch').mockImplementation(()=>new Promise<Response>(resolve=>{finish=resolve}));
+ const onSaved=vi.fn(),{result}=renderHook(()=>useDraft(original,onSaved));
+ act(()=>result.current.setContent({html:'原草稿'}));let discarding!:Promise<void>;
+ act(()=>{discarding=result.current.discard()});act(()=>result.current.setContent({html:'读取途中继续写'}));
+ await act(async()=>{finish(new Response(JSON.stringify({...original,version:2,content:{html:'服务器'}})));await discarding});
+ expect(result.current.content.html).toBe('读取途中继续写');expect(result.current.head.current.version).toBe(1);expect(onSaved).not.toHaveBeenCalled();
+ expect(localStorage.getItem('comic-draft:project:doc')).toContain('读取途中继续写');expect(result.current.error).toContain('编辑');
+});
+it('discard finishing after unmount cannot erase another editor cache',async()=>{
+ let finish!:(r:Response)=>void;vi.spyOn(globalThis,'fetch').mockImplementation(()=>new Promise<Response>(resolve=>{finish=resolve}));
+ const onSaved=vi.fn(),{result,unmount}=renderHook(()=>useDraft(original,onSaved));
+ act(()=>result.current.setContent({html:'旧窗口草稿'}));let discarding!:Promise<void>;
+ act(()=>{discarding=result.current.discard()});unmount();
+ localStorage.setItem('comic-draft:project:doc','新窗口自己的草稿');
+ await act(async()=>{finish(new Response(JSON.stringify({...original,version:2})));await discarding});
+ expect(localStorage.getItem('comic-draft:project:doc')).toBe('新窗口自己的草稿');expect(onSaved).not.toHaveBeenCalled();
+});

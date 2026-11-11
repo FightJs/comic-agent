@@ -80,7 +80,7 @@ export function parseOutline(html: string): OutlineEntry[] {
   }));
 }
 export const primaryRecord = (r: any) =>
-  !r.content.candidate_for && !r.content.pending_for;
+  !r.content.candidate_for && !r.content.creation_candidate && !r.content.pending_for && !r.content.rejected && !r.content.adopted_into && !r.content.deleted_by_script && r.adopted !== 0;
 export function clearSubmittedMessage(current: string, submitted: string) {
   return current === submitted ? "" : current;
 }

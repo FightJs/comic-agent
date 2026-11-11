@@ -1,0 +1,17 @@
+.style-test-detail { margin-top: 16px; min-width: 0; }
+.style-test-basis { display: grid; grid-template-columns: 90px minmax(0,1fr); gap: 6px 12px; }
+.style-test-group dt { color: var(--muted); }
+.style-test-group dd { margin: 0; overflow-wrap: anywhere; }
+.style-test-comparison { display: grid; grid-template-columns: repeat(auto-fit,minmax(200px,1fr)); gap: 16px; margin-top: 20px; }
+.style-test-comparison > section { min-width: 0; padding-top: 12px; border-top: 2px solid var(--line); }
+.style-test-comparison h5 { font-size: 14px; margin: 0 0 12px; overflow-wrap: anywhere; }
+.style-test-comparison dl { display: grid; grid-template-columns: 32px minmax(0,1fr); gap: 6px 10px; font-size: 12px; }
+.style-test-group pre { white-space: pre-wrap; overflow-wrap: anywhere; max-height: 320px; overflow: auto; font-size: 12px; }
+.style-test-group blockquote { margin: 12px 0; padding-left: 12px; border-left: 2px solid var(--line); overflow-wrap: anywhere; }
+.style-test-comparison figure { margin: 12px 0; }
+.style-test-comparison img { width: 100%; max-height: 360px; object-fit: contain; background: var(--surface); }
+.style-test-comparison figcaption { font-size: 11px; color: var(--muted); }
+.style-test-comparison button { margin-top: 12px; max-width: 100%; white-space: normal; }
+.style-batch-control { margin-block: 20px; padding-block: 16px; border-block: 1px solid var(--line); }
+.style-batch-control > button { margin: 12px 8px 0 0; }
+.style-batch-control label { align-items: flex-start; line-height: 1.7; }

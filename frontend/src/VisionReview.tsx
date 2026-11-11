@@ -1,0 +1,61 @@
+import {VisionSources,type VisionSource} from './VisionSources';
+import {useEffect,useState,useRef} from 'react';
+import {api,base,json,type RecordItem} from './api';
+import {Badge,Drawer,ErrorNote} from './ui';
+import {primaryRecord} from './workflowLogic';
+import './vision-review.css';
+const labels:Record<string,string>={prepared:'待确认',queued:'等待视觉容量',running:'正在检查',received:'已保存返回',completed:'报告已保存',invalid:'返回格式无效',blocked:'尚未提交',unknown:'完成情况未知',cancelled:'已停止',interrupted:'等待恢复授权',resolved:'已记录人工结论'};
+type Review={id:string;status:string;source:string;stale?:boolean;error?:string;raw:string|null;report:any;usage:any;manifest:{provider:{model:string};images:any[];descriptions:any[];context:any[];sources?:any[];review_skills?:any[];image_batch_id?:string}};
+type History={id:string;status:string;created:string;target_version:number};
+export function VisionReviewButton({target,disabled=false}:{target:RecordItem;disabled?:boolean}){
+ const [open,setOpen]=useState(false);
+ return <><button disabled={disabled||!target.content.url} onClick={()=>setOpen(true)}>模型视觉复查</button>{open&&<VisionReview key={target.id+':'+target.version} target={target} onClose={()=>setOpen(false)}/>}</>;
+}
+export function VisionReview({target,onClose,reviewId}:{target:RecordItem;onClose:()=>void;reviewId?:string}){
+ const pid=target.project_id,endpoint=base(pid)+'/vision-reviews';
+ const [records,setRecords]=useState<RecordItem[]>([]),[history,setHistory]=useState<History[]>([]),[selected,setSelected]=useState<Review|null>(null),[refs,setRefs]=useState<string[]>([]),[context,setContext]=useState<string[]>([]),[busy,setBusy]=useState(false),[loading,setLoading]=useState(true),[error,setErrorState]=useState(''),[region,setRegion]=useState<number[]|null>(null),[note,setNote]=useState(''),[confirmed,setConfirmed]=useState(false);
+ useEffect(()=>{if(!reviewId)return;let alive=true;api<Review>(endpoint+'/'+reviewId).then(r=>{if(alive)setSelected(r);}).catch(e=>{if(alive)setError(e.message);});return()=>{alive=false;};},[endpoint,reviewId]);
+ const [sources,setSources]=useState<VisionSource[]>([]);
+ const errorAnchor=useRef<HTMLDivElement>(null);
+ function setError(message:string){setErrorState(message);if(message)requestAnimationFrame(()=>errorAnchor.current?.scrollIntoView?.({block:'nearest'}));}
+ const list=()=>api<History[]>(endpoint+'?target_id='+encodeURIComponent(target.id));
+ useEffect(()=>{let alive=true;Promise.all([api<RecordItem[]>(base(pid)+'/records'),list()]).then(([r,h])=>{if(alive){setRecords(r);setHistory(h);}}).catch(e=>{if(alive)setError(e.message);}).finally(()=>{if(alive)setLoading(false);});return()=>{alive=false;};},[pid,target.id]);
+ useEffect(()=>{if(!selected||!['queued','running'].includes(selected.status))return;let alive=true;const timer=setInterval(()=>{api<Review>(endpoint+'/'+selected.id).then(r=>{if(alive){setSelected(r);setHistory(rows=>rows.map(row=>row.id===r.id?{...row,status:r.status}:row));}}).catch(e=>{if(alive)setError(e.message);});},1000);return()=>{alive=false;clearInterval(timer);};},[selected?.id,selected?.status,endpoint]);
+ const choices=records.filter(r=>r.id!==target.id&&['image','asset','style'].includes(r.kind)&&r.content.url&&primaryRecord(r)&&r.adopted===r.version&&r.review==='approved');
+ const texts=records.filter(r=>['script','package'].includes(r.kind)&&primaryRecord(r)&&r.adopted===r.version);
+ function guard(ids:string[]){if(ids.some(id=>localStorage.getItem(`comic-draft:${pid}:${id}`)))throw Error('目标或参考仍有未保存草稿，请先保存或处理。');}
+ function choose(r:Review){setSelected(r);setRegion(null);setNote('');setConfirmed(false);}
+ async function action(name:string){if(!selected)return;setBusy(true);setError('');try{if(name!=='cancel')guard([...selected.manifest.images,...selected.manifest.context].map(r=>r.id));choose(await api<Review>(endpoint+'/'+selected.id+'/'+name,json('POST',{})));setHistory(await list());}catch(e){setError((e as Error).message);}finally{setBusy(false);}}
+ async function preview(){setBusy(true);setError('');try{guard([target.id,...refs,...context]);const ref=(r:RecordItem)=>({id:r.id,version:r.version});choose(await api<Review>(endpoint,json('POST',{target:ref(target),references:choices.filter(r=>refs.includes(r.id)).map(ref),context:texts.filter(r=>context.includes(r.id)).map(ref),source_ranges:sources.map(({document_id,parse_version,start,end})=>({document_id,parse_version,start,end})),submission_id:crypto.randomUUID()})));setHistory(await list());}catch(e){setError((e as Error).message);}finally{setBusy(false);}}
+ const frozen=selected?.manifest;
+ return <Drawer title="模型视觉复查" onClose={onClose} wide><div className="vision-review">
+  {reviewId&&<p className="notice">固定批次检查记录，只读查看；启动、恢复及有限返修由原图像批次管理，不在此另行授权。</p>}
+  <p className="notice">检查实际图片及本次明确选择的参考，最多调用1次视觉模型，费用未知。模型报告不替代人工审核，也不自动修图。只核对本次所选原文及资料，不代表已核对全书。关闭不会撤销已提交的检查，可重开查看。</p>
+  <div ref={errorAnchor}><ErrorNote message={error}/></div>
+  <div className="actions">{!reviewId&&<button disabled={busy} onClick={()=>{setSelected(null);setRegion(null);setError('');}}>重新选择检查范围</button>}<button disabled={busy} onClick={async()=>{try{if(selected)choose(await api<Review>(endpoint+'/'+selected.id));setHistory(await list());}catch(e){setError((e as Error).message);}}}>刷新检查记录</button></div>
+  {!selected?reviewId?<p>正在读取固定报告…</p>:<section aria-label="视觉检查范围">
+   <h3>{target.title} · v{target.version}</h3><img className="vision-target" src={target.content.url} alt={'待检查：'+target.title}/>
+   <details><summary>选择批准图像参考 · {refs.length}/7</summary>{choices.map(r=><label className="vision-choice" key={r.id}><input type="checkbox" checked={refs.includes(r.id)} disabled={refs.length>=7&&!refs.includes(r.id)} onChange={e=>setRefs(v=>e.target.checked?[...v,r.id]:v.filter(id=>id!==r.id))}/>{r.title} · v{r.version}<Badge source={r.source}/></label>)}{!choices.length&&<p>暂无当前已采用且审核通过的参考图。只检查目标时，人物一致性结论会受限。</p>}</details>
+   <details><summary>选择脚本与包文字证据 · {context.length}/10</summary>{texts.map(r=><label className="vision-choice" key={r.id}><input type="checkbox" checked={context.includes(r.id)} disabled={context.length>=10&&!context.includes(r.id)} onChange={e=>setContext(v=>e.target.checked?[...v,r.id]:v.filter(id=>id!==r.id))}/>{r.title} · {r.kind==='script'?'脚本':'生图包'} v{r.version}<Badge source={r.source}/></label>)}{!texts.length&&<p>暂无当前已采用的脚本或生图包。</p>}</details>
+   <VisionSources pid={pid} value={sources} onChange={setSources} onError={setError}/><p className="muted">预览会固定项目当前启用的审核Skill及其引用规则，请在确认前核对。</p>
+   <button className="primary" disabled={busy||loading} onClick={()=>void preview()}>{loading?'正在读取范围…':'预览视觉检查范围'}</button>
+  </section>:<section aria-label="视觉检查详情">
+   <h3>{labels[selected.status]||selected.status} · <Badge source={selected.source}/></h3>
+   <p>视觉型号：<strong>{frozen?.provider.model}</strong> · 上限1次 · {selected.usage?.totalTokens>0?`${selected.usage.totalTokens} tokens`:'用量未知'} · 金额未知</p>
+   {selected.stale&&<p className="notice">输入已变化。这份记录只对应以下固定版本，不能代表当前图片；请关闭后从当前图片重新预览。</p>}
+   {selected.error&&<p className="notice">{selected.error}</p>}
+   <div className="vision-images">{frozen?.images.map((image,index)=><figure key={image.id}><div className="vision-pixel"><img src={'/api'+base(pid)+'/files/'+image.file_id} alt={`图${index+1}：${frozen.descriptions[index]?.title}`} />{index===0&&region&&<svg viewBox="0 0 1 1" preserveAspectRatio="none" aria-label="模型估计的问题区域"><rect x={region[0]} y={region[1]} width={region[2]} height={region[3]}/></svg>}</div><figcaption>图{index+1} · {index?'批准参考':'检查目标'} · {frozen.descriptions[index]?.title} v{image.version}<Badge source={image.source}/></figcaption></figure>)}</div>
+   <details><summary>固定文字证据 · {frozen?.context.length||0} 项</summary><pre>{JSON.stringify({图片说明:frozen?.descriptions,脚本和包:frozen?.context},null,2)}</pre></details>
+   <details open={Boolean(frozen?.sources?.length)}><summary>固定原著片段 · {frozen?.sources?.length||0} 段</summary>{frozen?.sources?.map((source,index)=><div key={index}><p>原文{index+1}：{source.title} · 解析v{source.parse_version} · {source.start}–{source.end}</p><blockquote className="vision-original">{source.quote}</blockquote>{source.head_parse_version&&source.head_parse_version!==source.parse_version&&<p className="notice">此段来自历史解析版本v{source.parse_version}，预览时当前解析为v{source.head_parse_version}；仅作该版本依据。需要当前原文请关闭后重新读取。</p>}{source.coverage?.complete===false&&<p className="notice">此解析存在缺页或OCR限制；只引用可见片段，不能认定全书完整。</p>}{source.coverage?.warnings?.map((w:string,i:number)=><p className="notice" key={i}>{w}</p>)}</div>)}{!frozen?.sources?.length&&<p>没有提供原著原文；不能据此验证原著一致性。</p>}</details>
+   <details><summary>固定审核流程与引用资料 · {frozen?.review_skills?.length||0} 项</summary>{frozen?.review_skills?.map(skill=><div key={skill.hash}><p>{skill.name} v{skill.version}{skill.resource_only?'（引用资料）':''}</p><small>hash：{skill.hash}</small>{skill.resources.map((resource:any)=><details key={resource.path}><summary>{resource.path}</summary><pre>{resource.text}</pre></details>)}</div>)}{!frozen?.review_skills?.length&&<p>本次未启用审核阶段Skill，使用系统基础检查规则。</p>}<p className="muted">规则固定至本次预览；更改项目流程只影响新预览。资料仅作文本，只读取本次冻结包及其声明依赖；不执行脚本或请求外部网络。</p></details>
+   {!selected.manifest.image_batch_id&&selected.status==='prepared'&&<button className="primary" disabled={busy||selected.stale} onClick={()=>void action('start')}>确认并检查1次</button>}
+   {!selected.manifest.image_batch_id&&['prepared','queued','running','interrupted'].includes(selected.status)&&<button disabled={busy} onClick={()=>void action('cancel')}>{selected.status==='prepared'?'丢弃检查预览':'停止检查'}</button>}
+   {!selected.manifest.image_batch_id&&selected.status==='interrupted'&&<button disabled={busy||selected.stale} onClick={()=>void action('recover')}>确认继续原检查1次</button>}
+   {!reviewId&&selected.raw!==null&&['received','unknown'].includes(selected.status)&&<button disabled={busy} onClick={()=>void action('recover')}>恢复已保存的报告（不再调用）</button>}
+   {selected.report&&<div className="vision-report"><h3>模型观察</h3><p>{selected.report.summary}</p>{!selected.report.issues.length&&<p>本次未发现具体问题；这不是人工通过结论。</p>}{selected.report.issues.map((issue:any,index:number)=><article className="issue" key={index}><strong>{({critical:'严重',major:'重要',minor:'一般'} as Record<string,string>)[issue.severity]} · {({story:'剧情',identity:'身份',costume:'服饰',scene:'场景',style:'画风',text:'文字',artifact:'画面缺陷',uncertain:'证据不足'} as Record<string,string>)[issue.category]}</strong><p>{issue.description}</p><p className="vision-evidence">{issue.evidence}</p><small>涉及图片：{issue.images.join('、')}</small>{issue.source_evidence?.map((cite:any,n:number)=><blockquote className="vision-original" key={n}><p>原文{cite.source} · {frozen?.sources?.[cite.source-1]?.title} · 解析v{frozen?.sources?.[cite.source-1]?.parse_version} · {cite.start}–{cite.end}</p>{cite.quote}</blockquote>)}{issue.region&&<button onClick={()=>setRegion(issue.region)}>查看模型估计区域</button>}</article>)}</div>}
+   {selected.raw!==null&&<details><summary>原始文字返回</summary><pre>{selected.raw}</pre></details>}
+   {!reviewId&&(selected.status==='unknown'||(selected.status==='cancelled'&&selected.error?.startsWith('在途')))&&selected.raw===null&&<details><summary>记录人工核对并结束未决调用</summary><p>本系统无法确认供应商是否完成或扣费。先核对供应商；记录结论不会自动重试，之后新检查仍需另行预览确认。</p><label>核对依据<textarea value={note} onChange={e=>setNote(e.target.value)} maxLength={2000}/></label><label className="vision-choice"><input type="checkbox" checked={confirmed} onChange={e=>setConfirmed(e.target.checked)}/>我已核对，并明确结束本次等待</label><button disabled={busy||!confirmed||!note.trim()} onClick={async()=>{setBusy(true);try{choose(await api<Review>(endpoint+'/'+selected.id+'/resolve',json('POST',{confirmed,note})));setHistory(await list());}catch(e){setError((e as Error).message);}finally{setBusy(false);}}}>记录人工结论</button></details>}
+  </section>}
+  {!reviewId&&<details open><summary>此图片的检查历史 · {history.length} 项</summary>{history.map(row=><button className="vision-history" disabled={busy} key={row.id} onClick={async()=>{setError('');try{choose(await api<Review>(endpoint+'/'+row.id));}catch(e){setError((e as Error).message);}}}>目标v{row.target_version} · {labels[row.status]||row.status} · {new Date(row.created).toLocaleString('zh-CN')}</button>)}{!history.length&&<p>尚无检查记录。预览不会向供应商发送请求。</p>}</details>}
+ </div></Drawer>;
+}
