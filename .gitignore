@@ -10,3 +10,5 @@ output/
 .superpowers/
 .DS_Store
 *.tsbuildinfo
+
+docs/简历*.md
