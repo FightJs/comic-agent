@@ -12,3 +12,6 @@ output/
 *.tsbuildinfo
 
 docs/简历*.md
+
+# Static demo output
+frontend/dist-demo/
